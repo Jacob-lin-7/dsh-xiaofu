@@ -1,0 +1,23 @@
+{
+  "schema": "dsh-hex-pet.pack/1",
+  "id": "my-character",
+  "name": "我的角色",
+  "version": "1.0.0",
+  "author": "your-name",
+  "license": "CC-BY-4.0",
+  "animations": [
+    "animations/idle.webm",
+    "animations/click-happy.webm",
+    "animations/click-shy.webm",
+    "animations/drag.webm",
+    "animations/sleep-loop.webm"
+  ],
+  "animationMeta": {
+    "animations/idle.webm": { "fps": 24, "mode": "loop" },
+    "animations/click-happy.webm": { "fps": 24, "mode": "once" },
+    "animations/click-shy.webm": { "fps": 24, "mode": "once" },
+    "animations/drag.webm": { "fps": 24, "mode": "loop" },
+    "animations/sleep-loop.webm": { "fps": 24, "mode": "loop" }
+  },
+  "preview": "preview.png"
+}

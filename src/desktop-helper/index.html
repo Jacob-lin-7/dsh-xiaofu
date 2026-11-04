@@ -1,0 +1,631 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+      }
+      body {
+        cursor: grab;
+        transition: transform 120ms ease-out;
+      }
+      body.bounce {
+        transform: scale(0.92);
+      }
+      body.dragging {
+        cursor: grabbing;
+      }
+      video {
+        display: block;
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: calc(100% - 72px);
+        object-fit: contain;
+        pointer-events: none;
+      }
+      #fallback {
+        position: fixed;
+        inset: 72px 0 0 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      #fallback svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      #fallback .float {
+        animation: hex-float 3.4s ease-in-out infinite;
+        transform-origin: 120px 120px;
+      }
+      #fallback .eyes {
+        animation: hex-blink 4.6s infinite;
+        transform-origin: 120px 118px;
+      }
+      @keyframes hex-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+      @keyframes hex-blink {
+        0%, 92%, 100% { transform: scaleY(1); }
+        95% { transform: scaleY(0.08); }
+      }
+      #bubble {
+        position: fixed;
+        top: auto;
+        bottom: calc(100% - 72px + 6px);
+        left: 0;
+        right: 0;
+        width: max-content;
+        margin: 0 auto;
+        max-width: min(300px, calc(100% - 12px));
+        box-sizing: border-box;
+        transform: none;
+        padding: 7px 11px;
+        border-radius: 12px;
+        border: 1px solid rgba(127, 127, 127, 0.35);
+        background: Canvas;
+        color: CanvasText;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        font: 13px system-ui, "Microsoft YaHei", sans-serif;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        pointer-events: none;
+        display: none;
+        z-index: 10;
+      }
+      #bubble.show {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #bubble img {
+        width: 34px;
+        height: 34px;
+        object-fit: contain;
+        flex: 0 0 auto;
+      }
+
+    </style>
+  </head>
+  <body>
+    <video id="video" autoplay loop muted playsinline></video>
+    <div id="fallback">
+      <svg viewBox="0 0 240 240" aria-hidden="true">
+        <defs>
+          <linearGradient id="hex-body" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7c3aed" />
+            <stop offset="48%" stop-color="#a855f7" />
+            <stop offset="100%" stop-color="#e9d5ff" />
+          </linearGradient>
+          <radialGradient id="hex-shine" cx="0.3" cy="0.2" r="0.8">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.9" />
+            <stop offset="45%" stop-color="#fff" stop-opacity="0.16" />
+            <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <ellipse cx="120" cy="214" rx="62" ry="11" fill="#1e1b4b" opacity="0.22" />
+        <g class="float">
+          <path
+            d="M120 26 L203 72 L203 166 L120 212 L37 166 L37 72 Z"
+            fill="url(#hex-body)"
+            stroke="#f5f3ff"
+            stroke-width="3.5"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M120 26 L203 72 L203 166 L120 212 L37 166 L37 72 Z"
+            fill="url(#hex-shine)"
+          />
+          <path
+            d="M120 34 C118 20 122 12 132 8"
+            fill="none"
+            stroke="#c4b5fd"
+            stroke-width="4"
+            stroke-linecap="round"
+          />
+          <circle cx="133" cy="7" r="6" fill="#f0abfc" opacity="0.9" />
+          <g class="eyes">
+            <ellipse cx="91" cy="118" rx="15" ry="17" fill="#2e1065" />
+            <ellipse cx="149" cy="118" rx="15" ry="17" fill="#2e1065" />
+            <circle cx="86" cy="112" r="5" fill="#fff" />
+            <circle cx="144" cy="112" r="5" fill="#fff" />
+            <circle cx="95" cy="124" r="2.4" fill="#fff" opacity="0.8" />
+            <circle cx="153" cy="124" r="2.4" fill="#fff" opacity="0.8" />
+          </g>
+          <ellipse cx="72" cy="139" rx="11" ry="6" fill="#fb7185" opacity="0.38" />
+          <ellipse cx="168" cy="139" rx="11" ry="6" fill="#fb7185" opacity="0.38" />
+          <path
+            d="M112 149 Q120 158 128 149"
+            fill="none"
+            stroke="#3b0764"
+            stroke-width="3.4"
+            stroke-linecap="round"
+          />
+          <path d="M43 128 Q26 138 34 154" fill="none" stroke="#c4b5fd" stroke-width="7" stroke-linecap="round" />
+          <path d="M197 128 Q214 138 206 154" fill="none" stroke="#c4b5fd" stroke-width="7" stroke-linecap="round" />
+          <circle cx="35" cy="157" r="7" fill="#e9d5ff" />
+          <circle cx="205" cy="157" r="7" fill="#e9d5ff" />
+        </g>
+      </svg>
+    </div>
+    <div id="bubble"></div>
+    <div id="dsh"><span class="dot"></span><span class="label"></span></div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const video = document.getElementById('video');
+      const fallback = document.getElementById('fallback');
+      const src = params.get('video') || '';
+      const idleVideos = (() => {
+        try {
+          const parsed = JSON.parse(params.get('idleVideos') || '[]');
+          return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+        } catch {
+          return [];
+        }
+      })();
+      let idleIndex = 0;
+      let currentIdle = idleVideos[0] || src;
+      const clickSrc = params.get('click') || '';
+      const doubleClickSrc = params.get('doubleClick') || '';
+      const parsePlaylist = (raw, fallback) => {
+        try {
+          const parsed = JSON.parse(raw || '[]');
+          return Array.isArray(parsed) && parsed.length > 0
+            ? parsed.filter((item) => typeof item === 'string')
+            : fallback
+              ? [fallback]
+              : [];
+        } catch {
+          return fallback ? [fallback] : [];
+        }
+      };
+      const clickVideos = parsePlaylist(params.get('clickVideos'), clickSrc);
+      const doubleClickVideos = parsePlaylist(
+        params.get('doubleClickVideos'),
+        doubleClickSrc,
+      );
+      let clickIndex = 0;
+      let doubleClickIndex = 0;
+      let clickTimer = null;
+      const soundOn = params.get('sound') === '1';
+      const soundVolume = Math.min(1, Math.max(0, Number(params.get('volume') || '0.6')));
+      const soundFile = params.get('soundFile') || '';
+      const clickAction = params.get('action') || 'animation';
+      const doubleClickAction = params.get('doubleClickAction') || 'none';
+      const clickEnabled = params.get('enabled') !== '0';
+      const bubbleEl = document.getElementById('bubble');
+      const bubbleDuration = Math.max(1200, Number(params.get('bubbleDuration') || '8000'));
+      const bubbleQuotes = (() => {
+        try {
+          const raw = params.get('bubbles') || '';
+          if (!raw) return [];
+          const bytes = Uint8Array.from(atob(raw), (char) => char.charCodeAt(0));
+          const parsed = JSON.parse(new TextDecoder().decode(bytes));
+          return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+        } catch {
+          return [];
+        }
+      })();
+      let bubbleTimer = null;
+      let stateActive = false;
+      let stateKey = '';
+      let stateTimers = [];
+      let menuPlaying = false;
+      let stateVideoPlaylist = [];
+      let stateVideoIndex = 0;
+      let stateVideoActive = false;
+      function playStateVideo() {
+        if (!stateVideoPlaylist.length) return;
+        stateVideoActive = true;
+        video.loop = stateVideoPlaylist.length <= 1;
+        video.src = stateVideoPlaylist[stateVideoIndex % stateVideoPlaylist.length];
+        video.play().catch(() => {});
+      }
+      function stopStateVideo() {
+        stateVideoActive = false;
+        stateVideoPlaylist = [];
+        stateVideoIndex = 0;
+        video.loop = idleVideos.length <= 1;
+        video.src = currentIdle;
+        video.play().catch(() => {});
+      }
+      function clearStateTimers() {
+        for (const timer of stateTimers) clearTimeout(timer);
+        stateTimers = [];
+      }
+      function stopStateBubble() {
+        stateActive = false;
+        stateKey = '';
+        clearStateTimers();
+        if (bubbleEl) bubbleEl.classList.remove('show');
+        if (stateVideoActive) stopStateVideo();
+      }
+      function renderStateBubble(text) {
+        if (!bubbleEl) return;
+        bubbleEl.textContent = '';
+        if (emojiFile) {
+          const img = document.createElement('img');
+          img.src = emojiFile;
+          img.alt = '';
+          bubbleEl.appendChild(img);
+        }
+        const span = document.createElement('span');
+        span.textContent = text;
+        bubbleEl.appendChild(span);
+        bubbleEl.classList.add('show');
+      }
+      function startStateBubble(state) {
+        const quotes =
+          Array.isArray(state.quotes) && state.quotes.length > 0
+            ? state.quotes.filter((item) => typeof item === 'string' && item)
+            : state.bubble
+              ? [state.bubble]
+              : [];
+        const key = `${state.event}:${state.since}`;
+        if (stateActive && stateKey === key) return;
+        stateActive = true;
+        stateKey = key;
+        const animationNames =
+          Array.isArray(state.animations) && state.animations.length > 0
+            ? state.animations
+            : state.animation
+              ? [state.animation]
+              : [];
+        if (animationNames.length > 0) {
+          const base = currentIdle.slice(0, currentIdle.lastIndexOf('/animations/') + 1);
+          stateVideoPlaylist = animationNames.map((name) => `${base}${name}`);
+          stateVideoIndex = 0;
+          playStateVideo();
+        }
+        if (quotes.length === 0) return;
+        clearStateTimers();
+        let index = Math.floor(Math.random() * quotes.length);
+        const duration = Math.max(300, Number(state.durationMs) || 8000);
+        const gap = Math.max(0, Number(state.gapMs) || 0);
+        const cycle = () => {
+          if (!stateActive) return;
+          renderStateBubble(quotes[index % quotes.length]);
+          stateTimers[0] = setTimeout(() => {
+            if (!stateActive) return;
+            bubbleEl.classList.remove('show');
+            stateTimers[1] = setTimeout(() => {
+              index += 1;
+              cycle();
+            }, gap);
+          }, duration);
+        };
+        cycle();
+      }
+      function applyStatePayload(body) {
+        if (body && body.state) startStateBubble(body.state);
+        else if (stateActive) stopStateBubble();
+      }
+      async function refreshStateBubble() {
+        if (!stateUrl) return;
+        try {
+          const response = await fetch(stateUrl, { cache: 'no-store' });
+          applyStatePayload(await response.json());
+        } catch {
+          if (stateActive) stopStateBubble();
+        }
+      }
+      const emojiFile = params.get('emojiFile') || '';
+      const stateEventsUrl = params.get('stateEvents') || '';
+      const stateUrl = stateEventsUrl ? stateEventsUrl.replace(/\/events$/, '') : '';
+      refreshStateBubble();
+      if (stateEventsUrl && typeof EventSource !== 'undefined') {
+        const stateEvents = new EventSource(stateEventsUrl);
+        stateEvents.onmessage = (event) => {
+          try {
+            applyStatePayload(JSON.parse(event.data));
+          } catch {
+            // ignore malformed frame
+          }
+        };
+      }
+      setInterval(refreshStateBubble, 2000);
+
+      const FONT_STACKS = {
+        system: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        sans: 'Arial, "Microsoft YaHei", sans-serif',
+        serif: 'Georgia, "Songti SC", serif',
+        mono: 'ui-monospace, "Cascadia Mono", Consolas, monospace',
+      };
+      const bubbleStyle = (() => {
+        try {
+          const raw = params.get('bubbleStyle') || '';
+          if (!raw) return {};
+          const bytes = Uint8Array.from(atob(raw), (char) => char.charCodeAt(0));
+          return JSON.parse(new TextDecoder().decode(bytes));
+        } catch {
+          return {};
+        }
+      })();
+      if (bubbleEl) {
+        if (bubbleStyle && typeof bubbleStyle === 'object') {
+          if (bubbleStyle.__fontName && bubbleStyle.__fontUrl) {
+            const fontStyle = document.createElement('style');
+            fontStyle.textContent = `@font-face{font-family:"${bubbleStyle.__fontName}";src:url("${bubbleStyle.__fontUrl}");font-display:swap;}`;
+            document.head.appendChild(fontStyle);
+          }
+          for (const [key, value] of Object.entries(bubbleStyle)) {
+            if (key.startsWith('__')) continue;
+            if (key === 'fontSize' || key === 'borderRadius') {
+              bubbleEl.style[key] = `${value}px`;
+            } else {
+              bubbleEl.style[key] = String(value);
+            }
+          }
+        }
+        if (!bubbleEl.style.fontFamily) {
+          bubbleEl.style.fontFamily =
+            FONT_STACKS[params.get('fontFamily') || 'system'] || FONT_STACKS.system;
+        }
+        if (!bubbleEl.style.fontSize) {
+          bubbleEl.style.fontSize = `${Math.max(9, Number(params.get('fontSize') || '13'))}px`;
+        }
+      }
+      function showBubble() {
+        if (stateActive) return;
+        if (!bubbleEl || bubbleQuotes.length === 0) return;
+        const quote = bubbleQuotes[Math.floor(Math.random() * bubbleQuotes.length)];
+        bubbleEl.textContent = '';
+        if (emojiFile) {
+          const img = document.createElement('img');
+          img.src = emojiFile;
+          img.alt = '';
+          bubbleEl.appendChild(img);
+        }
+        const text = document.createElement('span');
+        text.textContent = quote;
+        bubbleEl.appendChild(text);
+        bubbleEl.classList.add('show');
+        if (bubbleTimer) clearTimeout(bubbleTimer);
+        bubbleTimer = setTimeout(() => {
+          bubbleEl.classList.remove('show');
+          bubbleTimer = null;
+        }, bubbleDuration);
+      }
+      let audioContext = null;
+      let playingClick = false;
+
+      function playClickSound() {
+        if (!soundOn || soundVolume <= 0) return;
+        if (soundFile) {
+          try {
+            const audio = new Audio(soundFile);
+            audio.volume = soundVolume;
+            void audio.play().catch(() => {});
+          } catch {
+            // 自定义音效不可用时静默
+          }
+          return;
+        }
+        try {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          audioContext = audioContext || new Ctx();
+          if (audioContext.state === 'suspended') audioContext.resume().catch(() => {});
+          const now = audioContext.currentTime;
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(760, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.07);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(
+            Math.max(0.0001, soundVolume * 0.18),
+            now + 0.01,
+          );
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start(now);
+          osc.stop(now + 0.13);
+        } catch {
+          // 音频不可用时静默
+        }
+      }
+
+      function playClick(src = clickSrc) {
+        if (!src) return;
+        menuPlaying = false;
+        playingClick = true;
+        video.loop = false;
+        video.src = src;
+        video.play().catch(() => {});
+      }
+
+      function nextClickSource(action, isDouble) {
+        if (action !== 'animation') return '';
+        const list = isDouble ? doubleClickVideos : clickVideos;
+        if (list.length === 0) return '';
+        if (isDouble) {
+          const source = list[doubleClickIndex % list.length];
+          doubleClickIndex += 1;
+          return source;
+        }
+        const source = list[clickIndex % list.length];
+        clickIndex += 1;
+        return source;
+      }
+
+      video.addEventListener('ended', () => {
+        if (menuPlaying) {
+          menuPlaying = false;
+          playingClick = false;
+          if (stateActive && stateVideoPlaylist.length > 0) {
+            stateVideoActive = true;
+            playStateVideo();
+            return;
+          }
+          stateVideoActive = false;
+          video.loop = idleVideos.length <= 1;
+          video.src = currentIdle;
+          video.play().catch(() => {});
+          return;
+        }
+        if (stateVideoActive) {
+          if (playingClick) {
+            playingClick = false;
+            playStateVideo();
+            return;
+          }
+          if (stateVideoPlaylist.length > 1) {
+            stateVideoIndex = (stateVideoIndex + 1) % stateVideoPlaylist.length;
+            playStateVideo();
+          } else {
+            video.loop = true;
+            video.play().catch(() => {});
+          }
+          return;
+        }
+        if (playingClick) {
+          playingClick = false;
+          video.loop = idleVideos.length <= 1;
+          video.src = currentIdle;
+          video.play().catch(() => {});
+          return;
+        }
+        if (idleVideos.length > 1) {
+          idleIndex = (idleIndex + 1) % idleVideos.length;
+          currentIdle = idleVideos[idleIndex];
+          video.loop = false;
+          video.src = currentIdle;
+          video.play().catch(() => {});
+        }
+      });
+
+      if (src) {
+        video.src = currentIdle;
+        video.loop = idleVideos.length <= 1;
+        video.addEventListener('error', () => {
+          if (playingClick) {
+            menuPlaying = false;
+            playingClick = false;
+            video.loop = idleVideos.length <= 1;
+            video.src = currentIdle;
+            return;
+          }
+          video.style.display = 'none';
+          fallback.style.display = 'flex';
+        });
+        video.play().catch(() => {});
+      } else {
+        video.style.display = 'none';
+        fallback.style.display = 'flex';
+      }
+
+      window.hexDesktop &&
+        window.hexDesktop.onPlay &&
+        window.hexDesktop.onPlay(({ url }) => {
+          if (!url) return;
+          menuPlaying = true;
+          playingClick = true;
+          video.loop = false;
+          video.src = url;
+          video.play().catch(() => {});
+        });
+
+      let dragging = false;
+      let moved = false;
+      let start = { x: 0, y: 0 };
+      let activePointerId = null;
+
+      function performClick(action, clickSource) {
+        playClickSound();
+        showBubble();
+        if (action === 'open-dsh' || action === 'chat') {
+          window.hexDesktop && window.hexDesktop.openDsh(action);
+        } else if (action === 'animation') {
+          document.body.classList.add('bounce');
+          setTimeout(() => document.body.classList.remove('bounce'), 160);
+          playClick(clickSource);
+          setTimeout(() => {
+            window.hexDesktop && window.hexDesktop.blur && window.hexDesktop.blur();
+          }, 220);
+        }
+      }
+
+      function endDrag(allowClick) {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('dragging');
+        if (activePointerId !== null) {
+          try {
+            document.body.releasePointerCapture(activePointerId);
+          } catch {
+            // 指针已经释放
+          }
+          activePointerId = null;
+        }
+        window.hexDesktop && window.hexDesktop.dragEnd();
+        if (allowClick && !moved && clickEnabled) {
+          if (clickTimer) {
+            clearTimeout(clickTimer);
+            clickTimer = null;
+            const action = doubleClickAction === 'none' ? clickAction : doubleClickAction;
+            const isDouble = doubleClickAction !== 'none';
+            const source =
+              nextClickSource(action, isDouble) ||
+              (isDouble ? doubleClickSrc : clickSrc);
+            performClick(action, source);
+            return;
+          }
+          clickTimer = setTimeout(() => {
+            clickTimer = null;
+            performClick(clickAction, nextClickSource(clickAction, false) || clickSrc);
+          }, 240);
+        }
+      }
+
+      document.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        if (dragging) endDrag(false);
+        dragging = true;
+        moved = false;
+        start = { x: event.screenX, y: event.screenY };
+        activePointerId = event.pointerId;
+        try {
+          document.body.setPointerCapture(event.pointerId);
+        } catch {
+          // 某些环境不支持捕获
+        }
+        document.body.classList.add('dragging');
+        window.hexDesktop && window.hexDesktop.dragStart(event.screenX, event.screenY);
+      });
+
+      document.addEventListener('pointermove', (event) => {
+        if (!dragging) return;
+        // 窗口移动过程中 pointerup 可能丢失；左键已松开就直接收尾。
+        if ((event.buttons & 1) === 0) {
+          endDrag(true);
+          return;
+        }
+        if (Math.hypot(event.screenX - start.x, event.screenY - start.y) > 3) moved = true;
+        window.hexDesktop && window.hexDesktop.dragMove(event.screenX, event.screenY);
+      });
+
+      document.addEventListener('pointerup', () => endDrag(true));
+      document.addEventListener('pointercancel', () => endDrag(false));
+      document.addEventListener('mouseup', () => endDrag(true));
+      window.addEventListener('blur', () => endDrag(false));
+
+      document.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        window.hexDesktop && window.hexDesktop.log && window.hexDesktop.log(`contextmenu event at ${Date.now()}`);
+        window.hexDesktop && window.hexDesktop.showMenu();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,85 @@
+{
+  "name": "dsh-xiaofu",
+  "version": "0.2.0",
+  "description": "DSH 桌宠配置：可自定义角色、动作、对话与桌面行为",
+  "type": "module",
+  "main": "lib/host/index.js",
+  "bin": {
+    "dsh-xiaofu": "./lib/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/host/index.d.ts",
+      "default": "./lib/host/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "docs/INSTALL.md",
+    "docs/ANIMATION-EXT.md",
+    "docs/CHARACTER-SOP.md",
+    "docs/CHARACTER-QUICKSTART.md",
+    "templates",
+    "PETPACK_SPEC.md",
+    "petpack.schema.json",
+    "README.md",
+    "LICENSE",
+    "ASSETS_LICENSE.md",
+    "THIRD-PARTY.md",
+    "characters/xiaofu/preview.png",
+    "docs/GITHUB-RELEASE.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "desktop-pet",
+    "petpack",
+    "cordis"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-connection"
+      ],
+      "platform": "web"
+    },
+    "compatibility": {
+      "dshReleases": {}
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "prepack": "npm run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test --test-isolation=none tests/*.test.mjs"
+  },
+  "dependencies": {
+    "yauzl": "^3.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/yauzl": "^3.4.0",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jacob-lin-7/dsh-xiaofu.git"
+  },
+  "homepage": "https://github.com/Jacob-lin-7/dsh-xiaofu#readme",
+  "bugs": {
+    "url": "https://github.com/Jacob-lin-7/dsh-xiaofu/issues"
+  }
+}

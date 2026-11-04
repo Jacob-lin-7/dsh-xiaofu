@@ -1,0 +1,14 @@
+node_modules/
+lib/
+*.log
+.DS_Store
+*.tmp
+.tmp/
+.dev/
+.tmp-npm-cache/
+.tmp-demo/
+.tmp-recover/
+dist/
+characters/xiaofu/source/
+characters/xiaofu/qc/
+characters/xiaofu/*.petpack.zip

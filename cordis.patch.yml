@@ -1,0 +1,6 @@
+# dsh-xiaofu 的 bundle patch —— 把插件挂进 DSH 配置树
+#
+# id 必须全局唯一且与包名一致；不要写行尾注释（商城预检会抓不到 entry ID）。
+- insert:
+    - id: dsh-xiaofu
+      name: 'dsh-xiaofu'

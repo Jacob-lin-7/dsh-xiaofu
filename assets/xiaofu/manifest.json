@@ -1,0 +1,89 @@
+{
+  "schema": "dsh-hex-pet.pack/1",
+  "id": "xiaofu",
+  "name": "小符",
+  "version": "1.5.5",
+  "author": "local",
+  "license": "user-provided",
+  "animations": [
+    "animations/idle.webm",
+    "animations/click.webm",
+    "animations/state-working.webm",
+    "animations/state-approval.webm",
+    "animations/state-done.webm",
+    "animations/state-alert-time.webm",
+    "animations/state-alert-cost.webm",
+    "animations/idle-2.webm",
+    "animations/state-working-2.webm",
+    "animations/state-working-3.webm",
+    "animations/state-done-2.webm",
+    "animations/state-done-3.webm",
+    "animations/state-alert-time-2.webm",
+    "animations/state-alert-cost-2.webm",
+    "animations/idle-3.webm"
+  ],
+  "animationMeta": {
+    "animations/idle.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/click.webm": {
+      "fps": 24,
+      "mode": "once"
+    },
+    "animations/state-working.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-approval.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-done.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-alert-time.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-alert-cost.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/idle-2.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-working-2.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-working-3.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-done-2.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-done-3.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-alert-time-2.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/state-alert-cost-2.webm": {
+      "fps": 24,
+      "mode": "loop"
+    },
+    "animations/idle-3.webm": {
+      "fps": 24,
+      "mode": "loop"
+    }
+  },
+  "preview": "preview.png",
+  "icon": "icon.png"
+}
