@@ -7,7 +7,7 @@ git init
 git add .
 git commit -m "feat: dsh-xiaofu 0.2.0"
 git branch -M main
-git remote add origin https://github.com/<account>/dsh-xiaofu.git
+git remote add origin https://github.com/Jacob-lin-7/dsh-xiaofu.git
 git push -u origin main
 ```
 
@@ -18,11 +18,11 @@ git push -u origin main
 ```json
 "repository": {
   "type": "git",
-  "url": "https://github.com/<account>/dsh-xiaofu.git"
+  "url": "https://github.com/Jacob-lin-7/dsh-xiaofu.git"
 },
-"homepage": "https://github.com/<account>/dsh-xiaofu#readme",
+"homepage": "https://github.com/Jacob-lin-7/dsh-xiaofu#readme",
 "bugs": {
-  "url": "https://github.com/<account>/dsh-xiaofu/issues"
+  "url": "https://github.com/Jacob-lin-7/dsh-xiaofu/issues"
 }
 ```
 
