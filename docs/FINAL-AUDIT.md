@@ -205,13 +205,14 @@ task-done 维持时长          1200 秒（已实测）
 动画列表映射                idle / task-start / task-done /
                             approval-needed / task-timeout /
                             balance-warning 均存在
-插件                        dsh-xiaofu v0.2.0\n形象包                      xiaofu v1.5.2
+插件                        dsh-xiaofu v0.2.0
+形象包                      xiaofu v1.5.5
 ```
 
 测试入口：
 
 ```text
-http://127.0.0.1:3100/?token=EtEXNeU-m3RuKPq512c8ZPGFxL8GfWyx6foy0KJZaLo
+http://127.0.0.1:3100/?token=<TEST_TOKEN>
 ```
 
 ---
