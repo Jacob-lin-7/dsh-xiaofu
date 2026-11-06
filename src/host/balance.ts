@@ -29,13 +29,30 @@ function sumWallets(raw: unknown): Record<string, number> {
 
 export async function readAccountBalance(
   getBalance?: () => Promise<unknown>,
+  timeoutMs = 12000,
 ): Promise<AccountBalance> {
   if (!getBalance) {
     return { available: false, currencies: {}, error: '当前宿主没有 deepseekAccount 服务' };
   }
   try {
-    const currencies = sumWallets(await getBalance());
-    return { available: true, currencies };
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`余额查询超时（${Math.round(timeoutMs / 1000)} 秒）`)),
+        timeoutMs,
+      );
+      timer.unref();
+    });
+    try {
+      const raw = await Promise.race([getBalance(), timeout]);
+      if (raw === null || raw === undefined) {
+        return { available: false, currencies: {}, error: '当前账户未登录或授权已失效' };
+      }
+      const currencies = sumWallets(raw);
+      return { available: true, currencies };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   } catch (error) {
     return {
       available: false,

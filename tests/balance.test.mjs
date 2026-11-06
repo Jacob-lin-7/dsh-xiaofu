@@ -34,3 +34,10 @@ test('task usage resets per task and accumulates tokens', () => {
   assert.equal(guard.triggered, false);
   assert.equal(guard.taskId, 1);
 });
+
+
+test('returns a readable error when the account query hangs', async () => {
+  const result = await readAccountBalance(() => new Promise(() => {}), 20);
+  assert.equal(result.available, false);
+  assert.match(result.error, /超时/);
+});
