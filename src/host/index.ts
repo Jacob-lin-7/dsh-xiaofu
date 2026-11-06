@@ -274,7 +274,11 @@ export function apply(ctx: {
     getBalance(): Promise<unknown>;
   };
   inject?(deps: string[], callback: (ctx: Record<string, unknown>) => unknown): unknown;
-  on?(event: string, listener: (...args: any[]) => unknown): unknown;
+  on?(
+    event: string,
+    listener: (...args: any[]) => unknown,
+    options?: { prepend?: boolean; global?: boolean },
+  ): unknown;
 }): void {
   const store = new ConfigStore({ dataDir: resolveDataDir() });
 
@@ -317,17 +321,22 @@ export function apply(ctx: {
     autoTask.onSessionEvent(session?.header?.id ?? session?.id ?? 'default', event);
   });
   // 审批请求期间显示“等待确认”，审批结束后恢复任务状态。
-  ctx.on?.('approval/request', (...args: any[]) => {
-    const request = args[0] as
-      | { agent?: { session?: { id?: string } }; session?: { id?: string } }
-      | undefined;
-    const next = args[args.length - 1];
-    if (typeof next === 'function') {
-      const sessionId = request?.agent?.session?.id ?? request?.session?.id ?? 'default';
-      return autoTask.wrapApproval(sessionId, next as () => Promise<unknown>);
-    }
-    return undefined;
-  });
+  ctx.on?.(
+    'approval/request',
+    (...args: any[]) => {
+      const request = args[0] as
+        | { agent?: { session?: { id?: string } }; session?: { id?: string } }
+        | undefined;
+      const next = args[args.length - 1];
+      if (typeof next === 'function') {
+        const sessionId = request?.agent?.session?.id ?? request?.session?.id ?? 'default';
+        return autoTask.wrapApproval(sessionId, next as () => Promise<unknown>);
+      }
+      return undefined;
+    },
+    // UI 审批应答器可能先注册并 claim 这个 waterfall；必须排在它前面才能切状态。
+    { prepend: true },
+  );
   const taskUsage = new TaskUsageGuard();
   const studio = new StudioStore(store.dataDir);
   let getAccountBalance: (() => Promise<unknown>) | undefined;
