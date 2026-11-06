@@ -3,6 +3,7 @@
 用法：python scripts/make-demo-frames.py <out_dir>
 """
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -14,13 +15,14 @@ FRAMES = 72
 FPS = 24
 
 FONT_CANDIDATES = [
-    Path(r"C:\Users\Lin\.dsh\profiles\desktop\node_modules\dsh-pet\assets\fonts\上首软糖体.ttf"),
+    Path(os.environ["DSH_FONT_PATH"]) if os.environ.get("DSH_FONT_PATH") else None,
+    Path(__file__).resolve().parents[1] / "assets" / "fonts" / "zcool-kuaile.woff2",
 ]
 
 
 def font(size: int):
     for path in FONT_CANDIDATES:
-        if path.exists():
+        if path is not None and path.exists():
             try:
                 return ImageFont.truetype(str(path), size)
             except OSError:

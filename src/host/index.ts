@@ -166,7 +166,7 @@ function bubbleStyleFor(
   return { ...(BUBBLE_STYLE_PRESETS[styleId] ?? BUBBLE_STYLE_PRESETS.classic), ...style };
 }
 
-const PLUGIN_VERSION = '0.2.0';
+const PLUGIN_VERSION = '0.3.0';
 const ROUTE_PREFIX = '/dsh-xiaofu';
 const LEGACY_ROUTE_PREFIX = '/dsh-hex-pet';
 const MAX_BODY_BYTES = 1024 * 1024;
