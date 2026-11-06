@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaofu",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH 桌宠配置：可自定义角色、动作、对话与桌面行为",
   "type": "module",
   "main": "lib/host/index.js",

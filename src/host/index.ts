@@ -166,7 +166,7 @@ function bubbleStyleFor(
   return { ...(BUBBLE_STYLE_PRESETS[styleId] ?? BUBBLE_STYLE_PRESETS.classic), ...style };
 }
 
-const PLUGIN_VERSION = '0.3.0';
+const PLUGIN_VERSION = '0.3.1';
 const ROUTE_PREFIX = '/dsh-xiaofu';
 const LEGACY_ROUTE_PREFIX = '/dsh-hex-pet';
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -342,10 +342,24 @@ export function apply(ctx: {
   let getAccountBalance: (() => Promise<unknown>) | undefined;
   ctx.inject?.(['deepseekAccount'], (accountCtx) => {
     const account = accountCtx.deepseekAccount as
-      | { getBalance?: () => Promise<unknown> }
+      | {
+          getBalance?: (client: {
+            version: string;
+            locale: string;
+            timezoneOffsetSeconds: number;
+          }) => Promise<unknown>;
+        }
       | undefined;
     if (typeof account?.getBalance === 'function') {
-      getAccountBalance = () => account.getBalance!();
+      const client = {
+        version:
+          process.env.DSH_CLIENT_VERSION ??
+          process.env.DSH_APP_VERSION ??
+          PLUGIN_VERSION,
+        locale: Intl.DateTimeFormat().resolvedOptions().locale || 'zh-CN',
+        timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
+      };
+      getAccountBalance = () => account.getBalance!(client);
     }
   });
 

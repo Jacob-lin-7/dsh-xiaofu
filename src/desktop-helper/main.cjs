@@ -138,7 +138,7 @@ let packCache = (() => {
   }
 })();
 
-function request(type, payload = {}) {
+function request(type, payload = {}, timeoutMs = 1500) {
   if (!petId) return Promise.resolve({ ok: false, error: 'no pet' });
   const requestId = ++requestSeq;
   return new Promise((resolve) => {
@@ -149,7 +149,7 @@ function request(type, payload = {}) {
     );
     setTimeout(() => {
       if (pendingRequests.delete(requestId)) resolve({ ok: false, error: 'timeout' });
-    }, 1500);
+    }, timeoutMs);
   });
 }
 
@@ -584,7 +584,7 @@ app.whenReady().then(async () => {
       {
         label: '查询余额',
         click: async () => {
-          const result = await request('query-balance');
+          const result = await request('query-balance', {}, 20000);
           if (!result.ok) {
             dialog.showMessageBox(win, {
               type: 'error',

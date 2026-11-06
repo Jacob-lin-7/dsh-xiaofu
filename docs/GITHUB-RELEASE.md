@@ -5,7 +5,7 @@
 ```powershell
 git init
 git add .
-git commit -m "feat: dsh-xiaofu 0.3.0"
+git commit -m "feat: dsh-xiaofu 0.3.1"
 git branch -M main
 git remote add origin https://github.com/Jacob-lin-7/dsh-xiaofu.git
 git push -u origin main
@@ -37,15 +37,15 @@ npm pack --pack-destination dist
 发布 release 时上传：
 
 ```text
-dist/dsh-xiaofu-0.3.0.tgz
+dist/dsh-xiaofu-0.3.1.tgz
 dist/xiaofu.petpack.zip
 ```
 
 ## 4. 打 tag
 
 ```powershell
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 ## 5. npm 发布（可选）
