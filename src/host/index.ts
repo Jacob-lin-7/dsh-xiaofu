@@ -103,6 +103,14 @@ const BUBBLE_FONT_STACKS: Record<string, string> = {
   brush: '"STXingkai", "华文行楷", "KaiTi", cursive',
   seal: '"LiSu", "隶书", "STLiti", serif',
   round: '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif',
+  times: '"Times New Roman", Times, serif',
+  georgia: 'Georgia, "Times New Roman", serif',
+  arial: 'Arial, Helvetica, sans-serif',
+  calibri: 'Calibri, "Segoe UI", sans-serif',
+  garamond: 'Garamond, Georgia, serif',
+  courier: '"Courier New", Courier, monospace',
+  verdana: 'Verdana, Geneva, sans-serif',
+  palatino: '"Palatino Linotype", Palatino, Georgia, serif',
 };
 
 const BUBBLE_BUILTIN_FONTS: Record<string, string> = {
@@ -118,34 +126,63 @@ function bubbleStyleFor(
   bubble: Config['bubble'],
   petSize: number,
   dshUrl: string,
-): Record<string, string | number> {
+  fallbackFont = 'sans-serif',
+): Record<string, unknown> {
   const styleId =
     bubble.style === 'custom' && bubble.customAsset ? 'custom' : bubble.style || 'classic';
   const scale = bubble.scaleWithPet
     ? Math.max(0.85, Math.min(1.6, (petSize || 420) / 420))
     : 1;
-  const style: Record<string, string | number> = {
+  const style: Record<string, unknown> = {
     fontSize: Math.round((Number(bubble.fontSize) || 13) * scale),
   };
-  const fontKey = bubble.fontFamily || '';
-  if (fontKey && fontKey !== 'inherit' && !fontKey.includes(':')) {
-    const font = BUBBLE_FONT_STACKS[fontKey];
-    if (font) style.fontFamily = font;
-  }
-  if (fontKey.startsWith('builtin:')) {
-    const id = fontKey.slice('builtin:'.length);
-    const file = BUBBLE_BUILTIN_FONTS[id];
-    if (file) {
-      style.fontFamily = `"HexBuiltin-${id}", sans-serif`;
-      style.__fontName = `HexBuiltin-${id}`;
-      style.__fontUrl = `${dshUrl}/dsh-xiaofu/font/builtin/${encodeURIComponent(file)}`;
+  const fontFaces: Array<{ name: string; url: string }> = [];
+  const resolveFont = (key: string | undefined): string | undefined => {
+    if (!key || key === 'inherit') return undefined;
+    if (key.startsWith('builtin:')) {
+      const id = key.slice('builtin:'.length);
+      const file = BUBBLE_BUILTIN_FONTS[id];
+      if (!file) return undefined;
+      const name = `HexBuiltin-${id}`;
+      if (!fontFaces.some((face) => face.name === name)) {
+        fontFaces.push({
+          name,
+          url: `${dshUrl}/dsh-xiaofu/font/builtin/${encodeURIComponent(file)}`,
+        });
+      }
+      return `"${name}"`;
     }
-  } else if (fontKey.startsWith('custom:')) {
-    const asset = fontKey.slice('custom:'.length);
-    const name = `HexCustom-${asset.replace(/[^a-zA-Z0-9]/g, '')}`;
-    style.fontFamily = `"${name}", sans-serif`;
-    style.__fontName = name;
-    style.__fontUrl = `${dshUrl}/dsh-xiaofu/font/asset/${encodeURIComponent(asset)}`;
+    if (key.startsWith('custom:')) {
+      const asset = key.slice('custom:'.length);
+      const name = `HexCustom-${asset.replace(/[^a-zA-Z0-9]/g, '')}`;
+      if (!fontFaces.some((face) => face.name === name)) {
+        fontFaces.push({
+          name,
+          url: `${dshUrl}/dsh-xiaofu/font/asset/${encodeURIComponent(asset)}`,
+        });
+      }
+      return `"${name}"`;
+    }
+    return BUBBLE_FONT_STACKS[key];
+  };
+  const explicitChinese = resolveFont(bubble.fontFamily);
+  const chineseFont = explicitChinese ?? fallbackFont;
+  const latinFont =
+    bubble.latinFontFamily && bubble.latinFontFamily !== 'inherit'
+      ? resolveFont(bubble.latinFontFamily)
+      : undefined;
+  const families = [latinFont, chineseFont].filter(
+    (item): item is string => typeof item === 'string' && item.length > 0,
+  );
+  if (latinFont || explicitChinese) {
+    style.fontFamily = `${[...new Set(families)].join(', ')}, sans-serif`;
+    style.__fontCjk = chineseFont;
+    style.__fontLatin = latinFont ?? chineseFont;
+  }
+  if (fontFaces.length > 0) {
+    style.__fontName = fontFaces[0].name;
+    style.__fontUrl = fontFaces[0].url;
+    style.__fontFaces = fontFaces;
   }
   if (bubble.fontWeight === 'bold') style.fontWeight = 700;
   if (bubble.fontStyle === 'italic') style.fontStyle = 'italic';
@@ -166,7 +203,7 @@ function bubbleStyleFor(
   return { ...(BUBBLE_STYLE_PRESETS[styleId] ?? BUBBLE_STYLE_PRESETS.classic), ...style };
 }
 
-const PLUGIN_VERSION = '0.3.3';
+const PLUGIN_VERSION = '0.3.6';
 const ROUTE_PREFIX = '/dsh-xiaofu';
 const LEGACY_ROUTE_PREFIX = '/dsh-hex-pet';
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -569,7 +606,12 @@ export function apply(ctx: {
       soundFile,
       bubbleQuotes: config.bubble.enabled ? config.bubble.quotes : [],
       bubbleDuration: config.bubble.durationMs,
-      bubbleStyle: bubbleStyleFor(config.bubble, pet.size || 420, dshUrl),
+      bubbleStyle: bubbleStyleFor(
+        config.bubble,
+        pet.size || 420,
+        dshUrl,
+        BUBBLE_FONT_STACKS[config.appearance.fontFamily] ?? 'sans-serif',
+      ),
       emojiFile: bubbleEmoji?.path,
       fontFamily: config.appearance.fontFamily,
       fontSize: Math.round(
@@ -2390,7 +2432,12 @@ export function apply(ctx: {
               : undefined,
             bubbleQuotes: config.bubble.enabled ? config.bubble.quotes : [],
             bubbleDuration: config.bubble.durationMs,
-            bubbleStyle: bubbleStyleFor(config.bubble, pet.size || 420, dshUrl),
+            bubbleStyle: bubbleStyleFor(
+        config.bubble,
+        pet.size || 420,
+        dshUrl,
+        BUBBLE_FONT_STACKS[config.appearance.fontFamily] ?? 'sans-serif',
+      ),
             emojiFile: config.bubble.emojiId
               ? (await emoji.asset(config.bubble.emojiId))?.path
               : undefined,

@@ -226,6 +226,12 @@
       let stateVideoActive = false;
       let stateFollowAction = false;
       let stateFollowQuotes = [];
+      let stateBubbleQuotes = [];
+      let stateBubbleDuration = 8000;
+      let stateBubbleGap = 0;
+      let stateBubbleIndex = 0;
+      let temporaryBubbleActive = false;
+      let temporaryBubbleTimer = null;
       function playStateVideo() {
         if (!stateVideoPlaylist.length) return;
         stateVideoActive = true;
@@ -251,10 +257,50 @@
         stateActive = false;
         stateKey = '';
         clearStateTimers();
+        if (temporaryBubbleTimer) {
+          clearTimeout(temporaryBubbleTimer);
+          temporaryBubbleTimer = null;
+        }
+        temporaryBubbleActive = false;
         if (bubbleEl) bubbleEl.classList.remove('show');
         if (stateVideoActive) stopStateVideo();
       }
-      function renderStateBubble(text) {
+      function appendBubbleText(parent, text) {
+        const cjkFont = bubbleStyle && typeof bubbleStyle.__fontCjk === 'string'
+          ? bubbleStyle.__fontCjk
+          : '';
+        const latinFont = bubbleStyle && typeof bubbleStyle.__fontLatin === 'string'
+          ? bubbleStyle.__fontLatin
+          : '';
+        if (!cjkFont || !latinFont || cjkFont === latinFont) {
+          const span = document.createElement('span');
+          span.textContent = text;
+          parent.appendChild(span);
+          return;
+        }
+        const isCjk = (char) =>
+          /[\u2e80-\u2fff\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
+            char,
+          );
+        let current = '';
+        let currentCjk = null;
+        const flush = () => {
+          if (!current) return;
+          const span = document.createElement('span');
+          span.textContent = current;
+          span.style.fontFamily = currentCjk ? cjkFont : latinFont;
+          parent.appendChild(span);
+          current = '';
+        };
+        for (const char of String(text)) {
+          const cjk = isCjk(char);
+          if (currentCjk !== null && cjk !== currentCjk) flush();
+          currentCjk = cjk;
+          current += char;
+        }
+        flush();
+      }
+      function paintBubble(text) {
         if (!bubbleEl) return;
         bubbleEl.textContent = '';
         if (emojiFile) {
@@ -264,13 +310,68 @@
           bubbleEl.appendChild(img);
         }
         const span = document.createElement('span');
-        span.textContent = text;
+        appendBubbleText(span, text);
         bubbleEl.appendChild(span);
         bubbleEl.classList.add('show');
+      }
+      function renderStateBubble(text) {
+        if (temporaryBubbleActive) return;
+        paintBubble(text);
       }
       function renderFollowBubble() {
         if (!stateFollowAction || stateFollowQuotes.length === 0) return;
         renderStateBubble(stateFollowQuotes[stateVideoIndex % stateFollowQuotes.length]);
+      }
+      function startBubbleCycle(quotes, duration, gap, startIndex) {
+        clearStateTimers();
+        stateBubbleQuotes = quotes;
+        stateBubbleDuration = duration;
+        stateBubbleGap = gap;
+        stateBubbleIndex = startIndex;
+        let index = startIndex;
+        const cycle = () => {
+          if (!stateActive || temporaryBubbleActive) return;
+          renderStateBubble(quotes[index % quotes.length]);
+          stateTimers[0] = setTimeout(() => {
+            if (!stateActive || temporaryBubbleActive) return;
+            bubbleEl.classList.remove('show');
+            stateTimers[1] = setTimeout(() => {
+              index += 1;
+              stateBubbleIndex = index;
+              cycle();
+            }, gap);
+          }, duration);
+        };
+        cycle();
+      }
+      function showTemporaryBubble(text, durationMs = 5000) {
+        if (!bubbleEl) return;
+        temporaryBubbleActive = true;
+        clearStateTimers();
+        if (bubbleTimer) {
+          clearTimeout(bubbleTimer);
+          bubbleTimer = null;
+        }
+        paintBubble(text);
+        if (temporaryBubbleTimer) clearTimeout(temporaryBubbleTimer);
+        temporaryBubbleTimer = setTimeout(() => {
+          temporaryBubbleTimer = null;
+          temporaryBubbleActive = false;
+          if (!stateActive) {
+            bubbleEl.classList.remove('show');
+            return;
+          }
+          if (stateFollowAction) {
+            renderFollowBubble();
+            return;
+          }
+          if (stateBubbleQuotes.length > 0) {
+            const next = (stateBubbleIndex + 1) % stateBubbleQuotes.length;
+            startBubbleCycle(stateBubbleQuotes, stateBubbleDuration, stateBubbleGap, next);
+          } else {
+            bubbleEl.classList.remove('show');
+          }
+        }, Math.max(500, Number(durationMs) || 5000));
       }
       function startStateBubble(state) {
         const quotes =
@@ -299,26 +400,20 @@
         clearStateTimers();
         stateFollowAction = Boolean(state.followAction);
         stateFollowQuotes = quotes;
+        stateBubbleQuotes = quotes;
+        stateBubbleDuration = Math.max(300, Number(state.durationMs) || 8000);
+        stateBubbleGap = Math.max(0, Number(state.gapMs) || 0);
+        if (temporaryBubbleActive) return;
         if (stateFollowAction) {
           renderFollowBubble();
           return;
         }
-        let index = Math.floor(Math.random() * quotes.length);
-        const duration = Math.max(300, Number(state.durationMs) || 8000);
-        const gap = Math.max(0, Number(state.gapMs) || 0);
-        const cycle = () => {
-          if (!stateActive) return;
-          renderStateBubble(quotes[index % quotes.length]);
-          stateTimers[0] = setTimeout(() => {
-            if (!stateActive) return;
-            bubbleEl.classList.remove('show');
-            stateTimers[1] = setTimeout(() => {
-              index += 1;
-              cycle();
-            }, gap);
-          }, duration);
-        };
-        cycle();
+        startBubbleCycle(
+          quotes,
+          stateBubbleDuration,
+          stateBubbleGap,
+          Math.floor(Math.random() * quotes.length),
+        );
       }
       function applyStatePayload(body) {
         if (body && body.state) startStateBubble(body.state);
@@ -367,9 +462,15 @@
       })();
       if (bubbleEl) {
         if (bubbleStyle && typeof bubbleStyle === 'object') {
-          if (bubbleStyle.__fontName && bubbleStyle.__fontUrl) {
+          const fontFaces = Array.isArray(bubbleStyle.__fontFaces)
+            ? bubbleStyle.__fontFaces
+            : bubbleStyle.__fontName && bubbleStyle.__fontUrl
+              ? [{ name: bubbleStyle.__fontName, url: bubbleStyle.__fontUrl }]
+              : [];
+          for (const face of fontFaces) {
+            if (!face || !face.name || !face.url) continue;
             const fontStyle = document.createElement('style');
-            fontStyle.textContent = `@font-face{font-family:"${bubbleStyle.__fontName}";src:url("${bubbleStyle.__fontUrl}");font-display:swap;}`;
+            fontStyle.textContent = `@font-face{font-family:"${face.name}";src:url("${face.url}");font-display:swap;}`;
             document.head.appendChild(fontStyle);
           }
           for (const [key, value] of Object.entries(bubbleStyle)) {
@@ -390,7 +491,7 @@
         }
       }
       function showBubble() {
-        if (stateActive) return;
+        if (stateActive || temporaryBubbleActive) return;
         if (!bubbleEl || bubbleQuotes.length === 0) return;
         const quote = bubbleQuotes[Math.floor(Math.random() * bubbleQuotes.length)];
         bubbleEl.textContent = '';
@@ -605,8 +706,13 @@
         }
       }
 
-      document.addEventListener('pointerdown', (event) => {
-        if (event.button !== 0) return;
+      window.hexDesktop?.onTemporaryBubble?.((payload) => {
+        if (payload && typeof payload.text === 'string') {
+          showTemporaryBubble(payload.text, payload.durationMs);
+        }
+      });
+
+      document.addEventListener('pointerdown', (event) => {        if (event.button !== 0) return;
         if (dragging) endDrag(false);
         dragging = true;
         moved = false;

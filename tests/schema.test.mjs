@@ -104,3 +104,13 @@ test('autostart and follow-action settings parse', () => {
   assert.equal(config.bubble.stateTiming['task-start'].followAction, true);
   assert.equal(config.bubble.stateTiming['task-done'].followAction, false);
 });
+
+test('bilingual bubble fonts default to follow and accept a latin family', () => {
+  const defaults = defaultConfig();
+  assert.equal(defaults.bubble.latinFontFamily, 'inherit');
+  const config = configSchema.parse({
+    bubble: { fontFamily: 'kai', latinFontFamily: 'times' },
+  });
+  assert.equal(config.bubble.fontFamily, 'kai');
+  assert.equal(config.bubble.latinFontFamily, 'times');
+});

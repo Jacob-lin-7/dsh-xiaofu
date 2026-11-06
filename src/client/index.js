@@ -470,6 +470,14 @@ window.__ModuleLoader__.load({
       brush: '"STXingkai", "华文行楷", "KaiTi", cursive',
       seal: '"LiSu", "隶书", "STLiti", serif',
       round: '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif',
+      times: '"Times New Roman", Times, serif',
+      georgia: 'Georgia, "Times New Roman", serif',
+      arial: 'Arial, Helvetica, sans-serif',
+      calibri: 'Calibri, "Segoe UI", sans-serif',
+      garamond: 'Garamond, Georgia, serif',
+      courier: '"Courier New", Courier, monospace',
+      verdana: 'Verdana, Geneva, sans-serif',
+      palatino: '"Palatino Linotype", Palatino, Georgia, serif',
     };
     const BUILTIN_FONTS = {
       kuaile: { label: '可爱·快乐体', file: 'zcool-kuaile.woff2' },
@@ -793,32 +801,80 @@ window.__ModuleLoader__.load({
       { id: 'seal', label: '隶书' },
       { id: 'sans', label: '黑体' },
       { id: 'serif', label: '衬线' },
+      { id: 'times', label: '英文 · Times New Roman' },
+      { id: 'georgia', label: '英文 · Georgia' },
+      { id: 'arial', label: '英文 · Arial' },
+      { id: 'calibri', label: '英文 · Calibri' },
+      { id: 'garamond', label: '英文 · Garamond' },
+      { id: 'courier', label: '英文 · Courier New' },
+      { id: 'verdana', label: '英文 · Verdana' },
+      { id: 'palatino', label: '英文 · Palatino' },
       ...Object.entries(BUILTIN_FONTS).map(([id, font]) => ({
         id: `builtin:${id}`,
         label: font.label,
       })),
     ];
+    const resolveBubbleFont = (key, fallback) => {
+      if (key?.startsWith('builtin:')) {
+        const family = builtinFontFamily(key.slice('builtin:'.length));
+        return family ? `"${family}"` : fallback;
+      }
+      if (key?.startsWith('custom:')) {
+        return `"${customFontFamily(key.slice('custom:'.length))}"`;
+      }
+      if (key && key !== 'inherit') return FONT_STACKS[key] ?? fallback;
+      return fallback;
+    };
+    const bubbleFontFamilies = (bubble, fontStyle) => {
+      const chineseFont = resolveBubbleFont(bubble?.fontFamily, fontStyle.fontFamily);
+      const latinFont = bubble?.latinFontFamily && bubble.latinFontFamily !== 'inherit'
+        ? resolveBubbleFont(bubble.latinFontFamily, chineseFont)
+        : chineseFont;
+      return {
+        chineseFont,
+        latinFont,
+        family:
+          bubble?.latinFontFamily && bubble.latinFontFamily !== 'inherit'
+            ? `${latinFont}, ${chineseFont}`
+            : chineseFont,
+      };
+    };
+    const bubbleRuns = (text, fonts) => {
+      if (!text || fonts.latinFont === fonts.chineseFont) return text;
+      const isCjk = (char) =>
+        /[\u2e80-\u2fff\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]/.test(
+          char,
+        );
+      const runs = [];
+      let current = '';
+      let currentCjk = null;
+      for (const char of String(text)) {
+        const cjk = isCjk(char);
+        if (currentCjk !== null && cjk !== currentCjk) {
+          runs.push({ text: current, cjk: currentCjk });
+          current = '';
+        }
+        currentCjk = cjk;
+        current += char;
+      }
+      if (current) runs.push({ text: current, cjk: currentCjk });
+      return runs.map((run, index) =>
+        h(
+          'span',
+          {
+            key: `run-${index}`,
+            style: { fontFamily: run.cjk ? fonts.chineseFont : fonts.latinFont },
+          },
+          run.text,
+        ),
+      );
+    };
     const bubbleSurface = (bubble, fontStyle, petSize = 420) => {
       const styleId = bubble?.customAsset && bubble?.style === 'custom'
         ? 'custom'
         : bubble?.style ?? 'classic';
-      const font =
-        bubble?.fontFamily?.startsWith('builtin:')
-          ? {
-              ...fontStyle,
-              fontFamily: `"${builtinFontFamily(bubble.fontFamily.slice('builtin:'.length))}", sans-serif`,
-            }
-          : bubble?.fontFamily?.startsWith('custom:')
-            ? {
-                ...fontStyle,
-                fontFamily: `"${customFontFamily(bubble.fontFamily.slice('custom:'.length))}", sans-serif`,
-              }
-            : bubble?.fontFamily && bubble.fontFamily !== 'inherit'
-              ? {
-                  ...fontStyle,
-                  fontFamily: FONT_STACKS[bubble.fontFamily] ?? fontStyle.fontFamily,
-                }
-              : fontStyle;
+      const fonts = bubbleFontFamilies(bubble, fontStyle);
+      const font = { ...fontStyle, fontFamily: fonts.family };
       const scale = bubble?.scaleWithPet
         ? Math.max(0.85, Math.min(1.6, (petSize || 420) / 420))
         : 1;
@@ -1448,6 +1504,7 @@ window.__ModuleLoader__.load({
           ? `${stateBubbleText}${activeState.detail ? ` · ${activeState.detail}` : ''}`
           : null
         : bubbleText;
+      const bubbleFonts = bubbleFontFamilies(bubble, fontStyle);
 
       return h(
         React.Fragment,
@@ -1515,7 +1572,7 @@ window.__ModuleLoader__.load({
                       style: { width: 34, height: 34, objectFit: 'contain', flex: '0 0 auto' },
                     })
                   : null,
-                h('span', { key: 'text' }, shownBubble),
+                h('span', { key: 'text' }, bubbleRuns(shownBubble, bubbleFonts)),
               )
             : null,
           src && !videoFailed
@@ -3211,6 +3268,10 @@ window.__ModuleLoader__.load({
                     data.config.bubble?.fontFamily === `custom:${asset}`
                       ? 'inherit'
                       : data.config.bubble?.fontFamily,
+                  latinFontFamily:
+                    data.config.bubble?.latinFontFamily === `custom:${asset}`
+                      ? 'inherit'
+                      : data.config.bubble?.latinFontFamily,
                 }
               : {}),
           });
@@ -4006,27 +4067,76 @@ window.__ModuleLoader__.load({
               ],
             ),
             h(
-              'select',
+              'label',
               {
-                value: data.config.bubble?.fontFamily ?? 'inherit',
-                disabled: busy,
-                onChange: (event) =>
-                  saveBubble({ fontFamily: event.target.value || 'inherit' }),
-                style: { ...styles.input, minWidth: 120, width: 140 },
-                title: '气泡字体',
+                style: {
+                  display: 'flex',
+                  gap: 5,
+                  alignItems: 'center',
+                  fontSize: 12,
+                },
               },
-              [
-                ...BUBBLE_FONT_OPTIONS.map((option) =>
-                  h('option', { key: option.id, value: option.id }, `字体：${option.label}`),
-                ),
-                ...(data.config.bubble?.customFonts ?? []).map((asset, index) =>
-                  h(
-                    'option',
-                    { key: `custom-${asset}`, value: `custom:${asset}` },
-                    `字体：自定义 ${index + 1}`,
+              h('span', { style: { opacity: 0.75 } }, '中文字体'),
+              h(
+                'select',
+                {
+                  value: data.config.bubble?.fontFamily ?? 'inherit',
+                  disabled: busy,
+                  onChange: (event) =>
+                    saveBubble({ fontFamily: event.target.value || 'inherit' }),
+                  style: { ...styles.input, minWidth: 140, width: 160 },
+                  title: '中文字体',
+                },
+                [
+                  h('option', { key: 'inherit', value: 'inherit' }, '跟随外观'),
+                  ...BUBBLE_FONT_OPTIONS.filter((option) => option.id !== 'inherit').map(
+                    (option) => h('option', { key: option.id, value: option.id }, option.label),
                   ),
-                ),
-              ],
+                  ...(data.config.bubble?.customFonts ?? []).map((asset, index) =>
+                    h(
+                      'option',
+                      { key: `custom-${asset}`, value: `custom:${asset}` },
+                      `自定义 ${index + 1}`,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            h(
+              'label',
+              {
+                style: {
+                  display: 'flex',
+                  gap: 5,
+                  alignItems: 'center',
+                  fontSize: 12,
+                },
+              },
+              h('span', { style: { opacity: 0.75 } }, '英文字体'),
+              h(
+                'select',
+                {
+                  value: data.config.bubble?.latinFontFamily ?? 'inherit',
+                  disabled: busy,
+                  onChange: (event) =>
+                    saveBubble({ latinFontFamily: event.target.value || 'inherit' }),
+                  style: { ...styles.input, minWidth: 140, width: 160 },
+                  title: '英文字体；跟随中文表示中英文使用同一字体',
+                },
+                [
+                  h('option', { key: 'inherit', value: 'inherit' }, '跟随中文'),
+                  ...BUBBLE_FONT_OPTIONS.filter((option) => option.id !== 'inherit').map(
+                    (option) => h('option', { key: option.id, value: option.id }, option.label),
+                  ),
+                  ...(data.config.bubble?.customFonts ?? []).map((asset, index) =>
+                    h(
+                      'option',
+                      { key: `custom-${asset}`, value: `custom:${asset}` },
+                      `自定义 ${index + 1}`,
+                    ),
+                  ),
+                ],
+              ),
             ),
             h('input', {
               key: `bubble-font-size-${data.config.bubble?.fontSize ?? 13}`,

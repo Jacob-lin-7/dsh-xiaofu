@@ -43,7 +43,7 @@ export interface DesktopStartOptions {
   soundFile?: string;
   bubbleQuotes?: string[];
   bubbleDuration?: number;
-  bubbleStyle?: Record<string, string | number>;
+  bubbleStyle?: Record<string, unknown>;
   emojiFile?: string;
   fontFamily?: string;
   fontSize?: number;

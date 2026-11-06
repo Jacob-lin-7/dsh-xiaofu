@@ -636,31 +636,25 @@ app.whenReady().then(async () => {
       {
         label: '查询余额',
         click: async () => {
+          const sendBubble = (text, durationMs = 5000) => {
+            if (win && !win.isDestroyed()) {
+              win.webContents.send('hex:temporary-bubble', { text, durationMs });
+            }
+          };
+          sendBubble('正在查询余额…', 20000);
           const result = await queryBalance();
           if (!result.ok) {
-            dialog.showMessageBox(win, {
-              type: 'error',
-              title: '查询余额',
-              message: result.error || '查询失败',
-            });
+            sendBubble(`余额查询失败：${result.error || '查询失败'}`, 5000);
             return;
           }
           if (!result.available) {
-            dialog.showMessageBox(win, {
-              type: 'warning',
-              title: '查询余额',
-              message: result.error || '当前账户余额不可用',
-            });
+            sendBubble(`余额不可用：${result.error || '当前账户余额不可用'}`, 5000);
             return;
           }
           const lines = Object.entries(result.currencies ?? {})
-            .map(([currency, amount]) => `${currency}：${Number(amount).toFixed(2)}`)
-            .join('\n');
-          dialog.showMessageBox(win, {
-            type: 'info',
-            title: '账户余额',
-            message: lines || '没有可用钱包',
-          });
+            .map(([currency, amount]) => `${currency} ${Number(amount).toFixed(2)}`)
+            .join(' · ');
+          sendBubble(`账户余额：${lines || '没有可用钱包'}`, 5000);
         },
       },
       {

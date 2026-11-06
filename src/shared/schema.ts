@@ -143,8 +143,10 @@ export const bubbleSettingsSchema = z
       .default(defaultStateTiming),
     /** 内置气泡样式 id；custom 时用 customAsset */
     style: z.string().max(32).default('classic'),
-    /** 气泡字体；inherit 跟随外观，custom:<asset> 用自定义字体 */
+    /** 中文字体；inherit 跟随外观，custom:<asset> 用自定义字体 */
     fontFamily: z.string().max(64).default('inherit'),
+    /** 英文字体；inherit 跟随中文字体 */
+    latinFontFamily: z.string().max(64).default('inherit'),
     fontSize: z.number().int().min(11).max(32).default(13),
     scaleWithPet: z.boolean().default(false),
     fontWeight: z.enum(['normal', 'bold']).default('normal'),
@@ -187,6 +189,7 @@ const defaultBubbleSettings = (): BubbleSettings => ({
   stateTiming: defaultStateTiming(),
   style: 'classic',
   fontFamily: 'inherit',
+  latinFontFamily: 'inherit',
   fontSize: 13,
   scaleWithPet: false,
   fontWeight: 'normal',
