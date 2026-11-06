@@ -409,6 +409,7 @@ export function apply(ctx: {
     pack: string;
     size?: number;
     display?: string;
+    autoStart?: boolean;
     clickAction?: string;
     clickAnimation?: string;
     clickAnimations?: string[];
@@ -2638,6 +2639,29 @@ export function apply(ctx: {
     watcher.unref();
     return () => unwatchFile(store.configPath, handleExternalChange);
   }, 'dsh-xiaofu: config hot reload');
+
+  ctx.effect(() => {
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const config = await store.read();
+          for (const pet of config.pets) {
+            if (!pet.autoStart) continue;
+            if (!['desktop', 'both'].includes(pet.display)) continue;
+            try {
+              await startDesktopForPet(pet);
+            } catch {
+              // 单只失败不阻塞其它宠物或宿主。
+            }
+          }
+        } catch {
+          // 配置暂不可读时跳过本次自启动。
+        }
+      })();
+    }, 1500);
+    timer.unref();
+    return () => clearTimeout(timer);
+  }, 'dsh-xiaofu: autostart');
 
   ctx.effect(() => {
     const primary = ctx.webServer.register({

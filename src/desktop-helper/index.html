@@ -224,6 +224,8 @@
       let stateVideoPlaylist = [];
       let stateVideoIndex = 0;
       let stateVideoActive = false;
+      let stateFollowAction = false;
+      let stateFollowQuotes = [];
       function playStateVideo() {
         if (!stateVideoPlaylist.length) return;
         stateVideoActive = true;
@@ -235,6 +237,8 @@
         stateVideoActive = false;
         stateVideoPlaylist = [];
         stateVideoIndex = 0;
+        stateFollowAction = false;
+        stateFollowQuotes = [];
         video.loop = idleVideos.length <= 1;
         video.src = currentIdle;
         video.play().catch(() => {});
@@ -264,6 +268,10 @@
         bubbleEl.appendChild(span);
         bubbleEl.classList.add('show');
       }
+      function renderFollowBubble() {
+        if (!stateFollowAction || stateFollowQuotes.length === 0) return;
+        renderStateBubble(stateFollowQuotes[stateVideoIndex % stateFollowQuotes.length]);
+      }
       function startStateBubble(state) {
         const quotes =
           Array.isArray(state.quotes) && state.quotes.length > 0
@@ -289,6 +297,12 @@
         }
         if (quotes.length === 0) return;
         clearStateTimers();
+        stateFollowAction = Boolean(state.followAction);
+        stateFollowQuotes = quotes;
+        if (stateFollowAction) {
+          renderFollowBubble();
+          return;
+        }
         let index = Math.floor(Math.random() * quotes.length);
         const duration = Math.max(300, Number(state.durationMs) || 8000);
         const gap = Math.max(0, Number(state.gapMs) || 0);
@@ -479,11 +493,13 @@
           if (playingClick) {
             playingClick = false;
             playStateVideo();
+            renderFollowBubble();
             return;
           }
           if (stateVideoPlaylist.length > 1) {
             stateVideoIndex = (stateVideoIndex + 1) % stateVideoPlaylist.length;
             playStateVideo();
+            renderFollowBubble();
           } else {
             video.loop = true;
             video.play().catch(() => {});

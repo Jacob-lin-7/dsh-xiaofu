@@ -9,6 +9,7 @@ export interface ActiveState {
   quotes: string[];
   durationMs: number;
   gapMs: number;
+  followAction: boolean;
   detail?: string;
   since: number;
   until?: number;
@@ -111,6 +112,7 @@ export class StateController {
       quotes: quoteList,
       durationMs: timing?.durationMs ?? config.bubble?.durationMs ?? 3200,
       gapMs: timing?.gapMs ?? 1200,
+      followAction: Boolean(timing?.followAction),
       detail,
       since: now,
       ...(holdSeconds > 0 ? { until: now + holdSeconds * 1000 } : {}),

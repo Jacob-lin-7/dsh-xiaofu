@@ -94,3 +94,13 @@ test('action mapping includes idle and balance warning defaults', () => {
   );
   assert.equal(config.balanceWarning.tokenThreshold, 20000);
 });
+
+test('autostart and follow-action settings parse', () => {
+  const config = configSchema.parse({
+    pets: [{ id: 'p1', autoStart: true }],
+    bubble: { stateTiming: { 'task-start': { followAction: true } } },
+  });
+  assert.equal(config.pets[0].autoStart, true);
+  assert.equal(config.bubble.stateTiming['task-start'].followAction, true);
+  assert.equal(config.bubble.stateTiming['task-done'].followAction, false);
+});
