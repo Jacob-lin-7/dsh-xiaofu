@@ -1,6 +1,6 @@
 {
   "name": "dsh-xiaofu",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "DSH 桌宠配置：可自定义角色、动作、对话与桌面行为",
   "type": "module",
   "main": "lib/host/index.js",
@@ -31,7 +31,8 @@
     "ASSETS_LICENSE.md",
     "THIRD-PARTY.md",
     "characters/xiaofu/preview.png",
-    "docs/GITHUB-RELEASE.md"
+    "docs/GITHUB-RELEASE.md",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "dsh",

@@ -26,6 +26,8 @@ export const petSchema = z.object({
   pack: z.string().default('builtin'),
   size: z.number().int().positive().default(420),
   display: displaySchema.default('web'),
+  /** DSH 启动时是否自动启动桌面宠物 */
+  autoStart: z.boolean().default(false),
   /** 左键单击行为：无 / 播放点击动画 / 打开 DSH / 打开对话 */
   clickAction: clickActionSchema.default('animation'),
   /** 单击播放的动画路径；不填则自动找 click/tap */
@@ -104,10 +106,14 @@ const defaultStateQuotes = (): Record<string, string[]> => ({
   'balance-warning': ['余额见底了。', '这次的消耗有点扎眼。', '省着点，我还要买符纸。'],
 });
 
-const defaultStateTiming = (): Record<string, { durationMs: number; gapMs: number }> =>
+const defaultStateTiming = (): Record<string, {
+  durationMs: number;
+  gapMs: number;
+  followAction: boolean;
+}> =>
   Object.fromEntries(
     ['click', 'idle', 'task-start', 'task-done', 'approval-needed', 'task-timeout', 'balance-warning'].map(
-      (event) => [event, { durationMs: 8000, gapMs: 2000 }],
+      (event) => [event, { durationMs: 8000, gapMs: 2000, followAction: false }],
     ),
   );
 
@@ -130,6 +136,8 @@ export const bubbleSettingsSchema = z
         z.object({
           durationMs: z.number().int().min(500).max(60000).default(8000),
           gapMs: z.number().int().min(0).max(60000).default(2000),
+          /** 台词切换是否跟随状态动作播放 */
+          followAction: z.boolean().default(false),
         }),
       )
       .default(defaultStateTiming),
@@ -386,6 +394,7 @@ export const configSchema = z.object({
       pack: 'builtin',
       size: 420,
       display: 'web' as const,
+      autoStart: false,
       clickAction: 'animation' as const,
       clickAnimations: [],
       doubleClickAction: 'none' as const,

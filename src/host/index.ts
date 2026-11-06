@@ -166,7 +166,7 @@ function bubbleStyleFor(
   return { ...(BUBBLE_STYLE_PRESETS[styleId] ?? BUBBLE_STYLE_PRESETS.classic), ...style };
 }
 
-const PLUGIN_VERSION = '0.2.0';
+const PLUGIN_VERSION = '0.3.0';
 const ROUTE_PREFIX = '/dsh-xiaofu';
 const LEGACY_ROUTE_PREFIX = '/dsh-hex-pet';
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -274,7 +274,11 @@ export function apply(ctx: {
     getBalance(): Promise<unknown>;
   };
   inject?(deps: string[], callback: (ctx: Record<string, unknown>) => unknown): unknown;
-  on?(event: string, listener: (...args: any[]) => unknown): unknown;
+  on?(
+    event: string,
+    listener: (...args: any[]) => unknown,
+    options?: { prepend?: boolean; global?: boolean },
+  ): unknown;
 }): void {
   const store = new ConfigStore({ dataDir: resolveDataDir() });
 
@@ -317,17 +321,22 @@ export function apply(ctx: {
     autoTask.onSessionEvent(session?.header?.id ?? session?.id ?? 'default', event);
   });
   // 审批请求期间显示“等待确认”，审批结束后恢复任务状态。
-  ctx.on?.('approval/request', (...args: any[]) => {
-    const request = args[0] as
-      | { agent?: { session?: { id?: string } }; session?: { id?: string } }
-      | undefined;
-    const next = args[args.length - 1];
-    if (typeof next === 'function') {
-      const sessionId = request?.agent?.session?.id ?? request?.session?.id ?? 'default';
-      return autoTask.wrapApproval(sessionId, next as () => Promise<unknown>);
-    }
-    return undefined;
-  });
+  ctx.on?.(
+    'approval/request',
+    (...args: any[]) => {
+      const request = args[0] as
+        | { agent?: { session?: { id?: string } }; session?: { id?: string } }
+        | undefined;
+      const next = args[args.length - 1];
+      if (typeof next === 'function') {
+        const sessionId = request?.agent?.session?.id ?? request?.session?.id ?? 'default';
+        return autoTask.wrapApproval(sessionId, next as () => Promise<unknown>);
+      }
+      return undefined;
+    },
+    // UI 审批应答器可能先注册并 claim 这个 waterfall；必须排在它前面才能切状态。
+    { prepend: true },
+  );
   const taskUsage = new TaskUsageGuard();
   const studio = new StudioStore(store.dataDir);
   let getAccountBalance: (() => Promise<unknown>) | undefined;
@@ -400,6 +409,7 @@ export function apply(ctx: {
     pack: string;
     size?: number;
     display?: string;
+    autoStart?: boolean;
     clickAction?: string;
     clickAnimation?: string;
     clickAnimations?: string[];
@@ -2629,6 +2639,29 @@ export function apply(ctx: {
     watcher.unref();
     return () => unwatchFile(store.configPath, handleExternalChange);
   }, 'dsh-xiaofu: config hot reload');
+
+  ctx.effect(() => {
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const config = await store.read();
+          for (const pet of config.pets) {
+            if (!pet.autoStart) continue;
+            if (!['desktop', 'both'].includes(pet.display)) continue;
+            try {
+              await startDesktopForPet(pet);
+            } catch {
+              // 单只失败不阻塞其它宠物或宿主。
+            }
+          }
+        } catch {
+          // 配置暂不可读时跳过本次自启动。
+        }
+      })();
+    }, 1500);
+    timer.unref();
+    return () => clearTimeout(timer);
+  }, 'dsh-xiaofu: autostart');
 
   ctx.effect(() => {
     const primary = ctx.webServer.register({

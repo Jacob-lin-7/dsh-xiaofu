@@ -1384,6 +1384,11 @@ window.__ModuleLoader__.load({
           setStateBubbleText(null);
           return undefined;
         }
+        if (activeState.followAction) {
+          const followIndex = stateAnimIndex % quotes.length;
+          setStateBubbleText(quotes[followIndex]);
+          return () => setStateBubbleText(null);
+        }
         let cancelled = false;
         let showTimer = null;
         let gapTimer = null;
@@ -1415,6 +1420,8 @@ window.__ModuleLoader__.load({
         activeState?.quotes?.join('|'),
         activeState?.durationMs,
         activeState?.gapMs,
+        activeState?.followAction,
+        stateAnimIndex,
       ]);
 
       const animation =
@@ -4291,6 +4298,7 @@ window.__ModuleLoader__.load({
               const timing = data.config.bubble?.stateTiming?.[option.id] ?? {
                 durationMs: 8000,
                 gapMs: 2000,
+                followAction: false,
               };
               const saveTiming = (patch) =>
                 saveBubble({
@@ -4353,7 +4361,7 @@ window.__ModuleLoader__.load({
                     max: 60000,
                     step: 100,
                     defaultValue: timing.durationMs,
-                    disabled: busy,
+                    disabled: busy || Boolean(timing.followAction),
                     style: { ...styles.input, width: 86, minWidth: 74 },
                     onBlur: (event) => {
                       const value = Math.max(
@@ -4372,7 +4380,7 @@ window.__ModuleLoader__.load({
                     max: 60000,
                     step: 100,
                     defaultValue: timing.gapMs,
-                    disabled: busy,
+                    disabled: busy || Boolean(timing.followAction),
                     style: { ...styles.input, width: 86, minWidth: 74 },
                     onBlur: (event) => {
                       const value = Math.max(
@@ -4383,6 +4391,27 @@ window.__ModuleLoader__.load({
                     },
                   }),
                   h('span', { style: { opacity: 0.65 } }, 'ms（间隔期间无气泡）'),
+                  h(
+                    'span',
+                    {
+                      style: {
+                        display: 'inline-flex',
+                        gap: 4,
+                        alignItems: 'center',
+                        marginLeft: 8,
+                        opacity: 0.9,
+                      },
+                    },
+                    h('input', {
+                      type: 'checkbox',
+                      checked: Boolean(timing.followAction),
+                      disabled: busy,
+                      title: '开启后台词跟随动作切换，忽略上面的时长和间隔',
+                      onChange: (event) =>
+                        void saveTiming({ followAction: event.target.checked }),
+                    }),
+                    '跟随动作',
+                  ),
                 ),
               );
             }),
@@ -4698,6 +4727,27 @@ window.__ModuleLoader__.load({
                     ['both', '网页 + 桌面'],
                     ['none', '不显示'],
                   ].map(([value, label]) => h('option', { key: value, value }, label)),
+                ),
+                h(
+                  'label',
+                  {
+                    style: {
+                      display: 'inline-flex',
+                      gap: 4,
+                      alignItems: 'center',
+                      fontSize: 12,
+                      whiteSpace: 'nowrap',
+                    },
+                    title: '开启 DSH 时自动启动这只桌面宠物',
+                  },
+                  h('input', {
+                    type: 'checkbox',
+                    checked: Boolean(pet.autoStart),
+                    disabled: busy,
+                    onChange: (event) =>
+                      savePetField(pet.id, { autoStart: event.target.checked }),
+                  }),
+                  '自启动',
                 ),
                 h(
                   'span',
