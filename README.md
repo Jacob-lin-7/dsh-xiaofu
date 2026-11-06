@@ -43,7 +43,7 @@
 $profile = "$env:USERPROFILE\.dsh\profiles\desktop"
 
 npm install --prefix "$profile" --no-save `
-  "D:\path\to\dsh-xiaofu-0.3.1.tgz"
+  "D:\path\to\dsh-xiaofu-0.3.2.tgz"
 ```
 
 完全退出 DSH 后重新打开。

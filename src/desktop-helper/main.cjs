@@ -153,6 +153,45 @@ function request(type, payload = {}, timeoutMs = 1500) {
   });
 }
 
+async function queryBalanceFromHost() {
+  if (!dshUrl) throw new Error('DSH URL 不可用');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(
+      new URL('/dsh-xiaofu/balance/status', dshUrl).toString(),
+      { cache: 'no-store', signal: controller.signal },
+    );
+    if (!response.ok) throw new Error(`余额接口 HTTP ${response.status}`);
+    const body = await response.json();
+    const account = body && body.account ? body.account : {};
+    return {
+      ok: true,
+      type: 'balance-result',
+      available: Boolean(account.available),
+      currencies: account.currencies ?? {},
+      error: account.error,
+      thresholds: body?.thresholds ?? [],
+    };
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      return { ok: false, error: '余额查询超时（20 秒）' };
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function queryBalance() {
+  try {
+    return await queryBalanceFromHost();
+  } catch {
+    // 兼容旧宿主：HTTP 路由不可用时退回 stdin 请求。
+    return request('query-balance', {}, 20000);
+  }
+}
+
 let quitting = false;
 function quitWindow() {
   if (quitting) return;
@@ -584,7 +623,7 @@ app.whenReady().then(async () => {
       {
         label: '查询余额',
         click: async () => {
-          const result = await request('query-balance', {}, 20000);
+          const result = await queryBalance();
           if (!result.ok) {
             dialog.showMessageBox(win, {
               type: 'error',
