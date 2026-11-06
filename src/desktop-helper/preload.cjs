@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('hexDesktop', {
   blur: () => ipcRenderer.send('hex:blur'),
   log: (message) => ipcRenderer.send('hex:log', message),
   onPlay: (callback) => ipcRenderer.on('hex:play', (_event, payload) => callback(payload)),
+  onTemporaryBubble: (callback) =>
+    ipcRenderer.on('hex:temporary-bubble', (_event, payload) => callback(payload)),
   openDsh: (mode) => ipcRenderer.send('hex:open-dsh', mode),
   quit: () => ipcRenderer.send('hex:quit'),
 });
