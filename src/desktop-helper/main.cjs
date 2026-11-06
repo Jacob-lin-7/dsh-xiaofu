@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, screen, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const http = require('node:http');
 const readline = require('node:readline');
 const { pathToFileURL } = require('node:url');
 const { buildMessage } = require('./protocol.cjs');
@@ -155,40 +156,52 @@ function request(type, payload = {}, timeoutMs = 1500) {
 
 async function queryBalanceFromHost() {
   if (!dshUrl) throw new Error('DSH URL 不可用');
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
-  try {
-    const response = await fetch(
-      new URL('/dsh-xiaofu/balance/status', dshUrl).toString(),
-      { cache: 'no-store', signal: controller.signal },
-    );
-    if (!response.ok) throw new Error(`余额接口 HTTP ${response.status}`);
-    const body = await response.json();
-    const account = body && body.account ? body.account : {};
-    return {
-      ok: true,
-      type: 'balance-result',
-      available: Boolean(account.available),
-      currencies: account.currencies ?? {},
-      error: account.error,
-      thresholds: body?.thresholds ?? [],
-    };
-  } catch (error) {
-    if (error && error.name === 'AbortError') {
-      return { ok: false, error: '余额查询超时（20 秒）' };
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
+  const url = new URL('/dsh-xiaofu/balance/status', dshUrl);
+  return await new Promise((resolve, reject) => {
+    const request = http.get(url, { timeout: 20000 }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => {
+        body += chunk;
+      });
+      response.on('end', () => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`余额接口 HTTP ${response.statusCode}`));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(body);
+          const account = parsed && parsed.account ? parsed.account : {};
+          resolve({
+            ok: true,
+            type: 'balance-result',
+            available: Boolean(account.available),
+            currencies: account.currencies ?? {},
+            error: account.error,
+            thresholds: parsed?.thresholds ?? [],
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error('余额查询超时（20 秒）')));
+    request.on('error', reject);
+  });
 }
 
 async function queryBalance() {
+  log('balance query start');
   try {
-    return await queryBalanceFromHost();
-  } catch {
+    const result = await queryBalanceFromHost();
+    log(`balance http ok available=${result.available}`);
+    return result;
+  } catch (error) {
+    log(`balance http failed: ${error instanceof Error ? error.message : String(error)}`);
     // 兼容旧宿主：HTTP 路由不可用时退回 stdin 请求。
-    return request('query-balance', {}, 20000);
+    const result = await request('query-balance', {}, 20000);
+    log(`balance fallback ok=${result.ok} error=${result.error ?? ''}`);
+    return result;
   }
 }
 
