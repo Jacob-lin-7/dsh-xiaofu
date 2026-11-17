@@ -42,9 +42,11 @@
     "petpack",
     "cordis"
   ],
+  "icon": "assets/icon.png",
   "license": "MIT",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.12.0",
+    "dsh": ">=0.2.0-rc.1 <0.3.0"
   },
   "dsh": {
     "bundle": {
