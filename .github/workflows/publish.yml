@@ -62,8 +62,32 @@ jobs:
             || { echo "::error::包里没有 lib/host/index.js，发布后会装不上"; exit 1; }
           echo "入口文件 OK"
 
+      - name: Check NPM_TOKEN
+        id: token
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::未配置 NPM_TOKEN，本次只打包、不发布（打 tag 不会报错）"
+          fi
+
+      - name: Check version already published
+        id: published
+        if: steps.token.outputs.present == 'true'
+        shell: bash
+        run: |
+          ver="$(node -p "require('./package.json').version")"
+          if npm view "dsh-xiaofu@$ver" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::npm 上已有 $ver，跳过发布（幂等）"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish
-        if: github.event_name == 'push' || inputs.dry_run == false
+        if: (github.event_name == 'push' || inputs.dry_run == false) && steps.token.outputs.present == 'true' && steps.published.outputs.exists == 'false'
         run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
