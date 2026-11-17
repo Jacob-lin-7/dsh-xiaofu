@@ -30,12 +30,24 @@
 
 - Windows 10/11 x64（当前主要验证平台）
 - Node.js 22+
-- DSH 桌面端
-- 桌面模式需要 Electron：
-  - 默认查找 `%USERPROFILE%\.dsh\electron\electron.exe`
-  - 或设置 `DSH_PET_ELECTRON_PATH`
+- DSH 桌面端 0.2.x
+- 桌面模式需要 Electron（约 215 MB）：**首次启动时自动从国内镜像下载**，不需要手动装
 
 ## 安装
+
+### 在 DSH 里安装（推荐）
+
+1. 插件页 → **添加插件** → 输入 `dsh-xiaofu` → 安装
+2. **重启 DSH**
+3. 设置 →「桌宠配置」→「启动当前宠物」
+
+首次启动桌面模式会显示「准备运行环境 xx%」，下载并解压 Electron，约 30～60 秒；装好后桌宠自动出现。
+
+> **安装源提示**：npm 镜像（npmmirror）同步新版本有 5～30 分钟延迟。刚发版后如果装到的还是旧版本，把安装源切成 **「NPM 官方源」** 再装一次。
+
+> **确认版本**：装完检查
+> `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-xiaofu\package.json`
+> 里的 `"version"`。桌面模式自动准备 Electron 是 **0.3.7** 起才有的。
 
 ### 从本地包安装
 
@@ -43,10 +55,16 @@
 $profile = "$env:USERPROFILE\.dsh\profiles\desktop"
 
 npm install --prefix "$profile" --no-save `
-  "D:\path\to\dsh-xiaofu-0.3.6.tgz"
+  "D:\path\to\dsh-xiaofu-0.3.7.tgz"
 ```
 
 完全退出 DSH 后重新打开。
+
+### 更新
+
+DSH 暂不支持原地升级：先**卸载**再安装。
+
+**配置和角色包不会丢**——它们保存在 `%DSH_HOME%\dsh-xiaofu\`，不在插件目录里。
 
 ### 开发模式
 
