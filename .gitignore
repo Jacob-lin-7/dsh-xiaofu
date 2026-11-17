@@ -1,5 +1,6 @@
 node_modules/
-lib/
+# lib/ 有意识地被跟踪：GitHub 源码安装不做构建，构建产物必须随仓库发布。
+# 每次 npm run build 后记得把 lib/ 一起提交（构建脚本会提示）。
 *.log
 .DS_Store
 *.tmp
