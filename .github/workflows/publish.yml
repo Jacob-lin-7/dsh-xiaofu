@@ -1,0 +1,69 @@
+name: Publish to npm
+
+# 由 GitHub Actions 代为发布，本机不需要 npm login / 扫码。
+# 前置：仓库 Settings → Secrets and variables → Actions 里添加 NPM_TOKEN
+#       （npm 网站上生成的 Granular Access Token，勾 Read and write + Bypass 2FA）
+#
+# 触发方式：
+#   1. 打 tag：git tag v0.3.6 && git push origin v0.3.6
+#   2. 或手动：Actions → Publish to npm → Run workflow
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 只打包，不真正发布
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # npm provenance（来源证明）
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      # tag 必须与 package.json 的 version 一致，避免发错版本
+      - name: Check tag matches package version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag 与 package.json 的 $pkg 不一致"
+            exit 1
+          fi
+          echo "版本一致：$pkg"
+
+      # 打包会触发 prepack → npm run build，把 lib/ 现构建出来
+      - name: Pack
+        run: npm pack
+
+      - name: Verify tarball contains built entry
+        shell: bash
+        run: |
+          tgz="$(ls -1 dsh-xiaofu-*.tgz | head -1)"
+          echo "包：$tgz"
+          tar -tzf "$tgz" | grep -qx 'package/lib/host/index.js' \
+            || { echo "::error::包里没有 lib/host/index.js，发布后会装不上"; exit 1; }
+          echo "入口文件 OK"
+
+      - name: Publish
+        if: github.event_name == 'push' || inputs.dry_run == false
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
