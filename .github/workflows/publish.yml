@@ -51,13 +51,20 @@ jobs:
 
       # 打包会触发 prepack → npm run build，把 lib/ 现构建出来
       - name: Pack
-        run: npm pack
+        id: pack
+        shell: bash
+        run: |
+          npm pack --json > pack.json
+          node -e "const j=require('./pack.json'); console.log('tar:', j[0].filename, j[0].size)"
+          echo "tgz=$(node -p "require('./pack.json')[0].filename")" >> "$GITHUB_OUTPUT"
 
       - name: Verify tarball contains built entry
         shell: bash
         run: |
-          tgz="$(ls -1 dsh-xiaofu-*.tgz | head -1)"
+          tgz="${{ steps.pack.outputs.tgz }}"
           echo "包：$tgz"
+          ls -la ./*.tgz || true
+          test -f "$tgz" || { echo "::error::npm pack 没有产出 $tgz"; exit 1; }
           tar -tzf "$tgz" | grep -qx 'package/lib/host/index.js' \
             || { echo "::error::包里没有 lib/host/index.js，发布后会装不上"; exit 1; }
           echo "入口文件 OK"
