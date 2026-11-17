@@ -5,13 +5,16 @@
 ```powershell
 git init
 git add .
-git commit -m "feat: dsh-xiaofu 0.3.6"
+git commit -m "feat: dsh-xiaofu 0.3.9"
 git branch -M main
 git remote add origin https://github.com/Jacob-lin-7/dsh-xiaofu.git
 git push -u origin main
 ```
 
-`dist/`、`.dev/`、`lib/`、原始视频和 QC 图已在 `.gitignore` 中排除，不要提交。
+`dist/`、`.dev/`、原始视频和 QC 图已在 `.gitignore` 中排除，不要提交。
+
+> **`lib/` 必须提交**：从 GitHub 地址安装时不会执行构建，`main` 指向的 `lib/` 必须是已构建好的产物。
+> 每次 `npm run build` 之后记得把 `lib/` 一起提交。
 
 ## 2. 补 package.json 仓库信息
 
@@ -37,15 +40,15 @@ npm pack --pack-destination dist
 发布 release 时上传：
 
 ```text
-dist/dsh-xiaofu-0.3.6.tgz
+dist/dsh-xiaofu-0.3.9.tgz
 dist/xiaofu.petpack.zip
 ```
 
 ## 4. 打 tag
 
 ```powershell
-git tag v0.3.6
-git push origin v0.3.6
+git tag -a v0.3.9 -m "dsh-xiaofu 0.3.9"
+git push origin v0.3.9
 ```
 
 ## 5. npm 发布（可选）
