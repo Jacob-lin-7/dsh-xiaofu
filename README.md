@@ -47,7 +47,7 @@
 
 > **确认版本**：装完检查
 > `%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-xiaofu\package.json`
-> 里的 `"version"`。桌面模式自动准备 Electron 是 **0.3.7** 起才有的。
+> 里的 `"version"`。桌面模式自动准备 Electron 是 **0.3.9** 起才有的。
 
 ### 从本地包安装
 
@@ -55,7 +55,7 @@
 $profile = "$env:USERPROFILE\.dsh\profiles\desktop"
 
 npm install --prefix "$profile" --no-save `
-  "D:\path\to\dsh-xiaofu-0.3.7.tgz"
+  "D:\path\to\dsh-xiaofu-0.3.9.tgz"
 ```
 
 完全退出 DSH 后重新打开。

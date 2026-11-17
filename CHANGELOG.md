@@ -1,5 +1,37 @@
 # 更新记录
 
+## 0.3.9 — 2026-11-17
+
+### 新增
+
+- 桌面模式首次启动自动准备 Electron 运行时（约 144 MB）：先检查本机是否已有，没有才依次尝试
+  `registry.npmmirror.com` → `cdn.npmmirror.com` → `npmmirror.com` → GitHub，解压到 `%DSH_HOME%\electron`；
+  设置页显示下载与解压进度，完成后自动启动桌宠。
+- 新增环境变量：`DSH_PET_ELECTRON_HOME`（安装目录）、`DSH_PET_ELECTRON_URL`（镜像地址，也可指向本地 zip）、
+  `DSH_PET_ELECTRON_VERSION`、`DSH_PET_ELECTRON_PATH`（直接指定可执行文件）。
+- 插件图标 `assets/icon.png`（256×256，111 KiB），插件页不再显示占位图。
+
+### 修复
+
+- Electron 下载改用 `node:https`，不再依赖在部分宿主环境下不可用的全局 `fetch`（原先只显示 `fetch failed`）。
+- 多个下载地址全部失败时，错误信息改为聚合展示 `host → 错误码`，可直接看出是 DNS、超时还是证书问题。
+- 新增的 `lib/host/electron-runtime.js` 曾漏提交，导致从 GitHub 地址安装会 `Cannot find module`；已纳入版本控制。
+- 插件内置版本号改为运行时读取 `package.json`，不再出现「装的是 0.3.7、代码里显示 0.3.6」的漂移。
+
+### 说明
+
+- 0.3.8 发布后已撤回，该版本号在 npm 上作废，请使用 0.3.9。
+
+## 0.3.7 — 2026-11-17
+
+### 新增
+
+- 桌面模式自动准备 Electron 运行时的第一个版本。
+
+### 修复
+
+- 补齐 `engines.dsh` 兼容性声明与插件图标。
+
 ## 0.3.6 — 2026-11-06
 
 ### 修复
