@@ -4,6 +4,7 @@ import { createWriteStream } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import yauzl from 'yauzl';
 import { resolveDshHome } from './config.js';
 
@@ -84,8 +85,11 @@ function downloadUrls(version: string): string[] {
 }
 
 function openZip(zipPath: string): Promise<yauzl.ZipFile> {
+  // 用 fromBuffer 而不是 open(path)：在 ESM 上下文里 fd 不会被事件循环保活，
+  // 会表现为"解压刚开始进程就静默退出"。media.ts 的 ffmpeg 解压用的是同一写法。
+  const buffer = readFileSync(zipPath);
   return new Promise((resolve, reject) => {
-    yauzl.open(zipPath, { lazyEntries: true, autoClose: true }, (error, file) => {
+    yauzl.fromBuffer(buffer, { lazyEntries: true, autoClose: false }, (error, file) => {
       if (error || !file) reject(error ?? new Error('无法打开 Electron 压缩包'));
       else resolve(file);
     });
@@ -146,18 +150,7 @@ async function extractZip(zipPath: string, destDir: string): Promise<number> {
           } else {
             await mkdir(dirname(target), { recursive: true });
             const stream = await openEntryStream(zip, entry);
-            const output = createWriteStream(target);
-            for await (const chunk of stream) {
-              const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as never);
-              if (!output.write(buffer)) {
-                await new Promise<void>((resolve) => output.once('drain', () => resolve()));
-              }
-            }
-            await new Promise<void>((resolve, reject) => {
-              output.on('close', () => resolve());
-              output.on('error', reject);
-              output.end();
-            });
+            await pipeline(stream as never, createWriteStream(target));
           }
           count += 1;
           zip.readEntry();
@@ -169,6 +162,7 @@ async function extractZip(zipPath: string, destDir: string): Promise<number> {
     zip.readEntry();
   });
 
+  zip.close();
   return count;
 }
 
