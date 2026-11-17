@@ -72,17 +72,30 @@ function archTag(): string {
   return 'x64';
 }
 
-/** 按优先级列出下载地址：国内镜像优先，GitHub 兜底。 */
+/**
+ * 按优先级列出下载地址：npmmirror 的几个入口优先（国内可达），GitHub 兜底。
+ * registry.npmmirror.com 和 pnpm 用的是同一个域名，装机时已经证明能连通。
+ */
 function downloadUrls(version: string): string[] {
   const explicit = process.env.DSH_PET_ELECTRON_URL;
   if (explicit) return [explicit];
 
   const file = `electron-v${version}-${platformTag()}-${archTag()}.zip`;
   return [
-    `https://npmmirror.com/mirrors/electron/${version}/${file}`,
     `https://registry.npmmirror.com/-/binary/electron/${version}/${file}`,
+    `https://cdn.npmmirror.com/binaries/electron/${version}/${file}`,
+    `https://npmmirror.com/mirrors/electron/${version}/${file}`,
     `https://github.com/electron/electron/releases/download/v${version}/${file}`,
   ];
+}
+
+/** 把下载地址缩成 "host" 形式，便于在错误信息里聚合。 */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.length > 40 ? `${url.slice(0, 40)}…` : url;
+  }
 }
 
 function openZip(zipPath: string): Promise<yauzl.ZipFile> {
@@ -282,7 +295,7 @@ async function provision(onProgress?: (progress: ElectronProgress) => void): Pro
 
   report({ phase: 'downloading', percent: 0, message: `正在准备桌面运行环境（Electron ${version}）…` });
 
-  let lastError = '';
+  const failures: string[] = [];
   for (const url of downloadUrls(version)) {
     try {
       await mkdir(home, { recursive: true });
@@ -317,7 +330,7 @@ async function provision(onProgress?: (progress: ElectronProgress) => void): Pro
       report({ phase: 'ready', percent: 100, message: '桌面运行环境就绪' });
       return existsSync(ready) ? ready : undefined;
     } catch (error) {
-      lastError = describeError(error);
+      failures.push(`${hostOf(url)} → ${describeError(error)}`);
       await rm(zipPath, { force: true }).catch(() => undefined);
       await rm(staging, { recursive: true, force: true }).catch(() => undefined);
     }
@@ -326,7 +339,7 @@ async function provision(onProgress?: (progress: ElectronProgress) => void): Pro
   report({
     phase: 'failed',
     percent: 0,
-    message: `桌面运行环境准备失败：${lastError}（可设置 DSH_PET_ELECTRON_URL 指定镜像，或指向本地 zip）`,
+    message: `桌面运行环境准备失败：${failures.join('；') || '未知原因'}（可设置 DSH_PET_ELECTRON_URL 指定镜像，或指向本地 zip）`,
   });
   return undefined;
 }
