@@ -1,4 +1,4 @@
-export type DesktopStatus = 'stopped' | 'starting' | 'running' | 'failed';
+export type DesktopStatus = 'stopped' | 'starting' | 'running' | 'provisioning' | 'failed';
 export interface DesktopAnimation {
     name: string;
     path: string;
@@ -56,6 +56,11 @@ export interface DesktopSnapshot {
         petId: string;
         error: string;
     }>;
+    /** 首次启动桌面模式时自动下载 Electron 的进度。 */
+    provisioning?: {
+        percent: number;
+        message: string;
+    };
 }
 export declare class DesktopManager {
     private children;
@@ -65,6 +70,8 @@ export declare class DesktopManager {
     private failedPets;
     private intentional;
     private errorValue;
+    private provisioningState;
+    private provisioningStarted;
     private requestHandler;
     constructor();
     setRequestHandler(handler: (message: Record<string, unknown>) => Promise<Record<string, unknown>>): void;
@@ -73,6 +80,11 @@ export declare class DesktopManager {
     private helperPath;
     start(options: DesktopStartOptions): DesktopSnapshot;
     private spawn;
+    /**
+     * 首次启动桌面模式时，本机没有 Electron：自动下载并解压，
+     * 期间 status() 报告 provisioning 进度，完成后补齐所有待启动的宠物。
+     */
+    private startProvisioning;
     isRunning(petId: string): boolean;
     updatePosition(petId: string, x: number, y: number): void;
     stopPet(petId: string): DesktopSnapshot;

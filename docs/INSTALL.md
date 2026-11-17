@@ -31,18 +31,20 @@ cmd /c mklink /J "$profile\node_modules\dsh-xiaofu" "D:\DSH\vibecoding\dsh-xiaof
 
 然后重启 DSH。
 
-## 3. Electron 运行时
+## 3. Electron 运行时（桌面模式）
 
-桌面模式需要 Electron：
+桌面模式需要一份 Electron（约 200 MB）。**不需要手动安装**：第一次点「启动当前宠物」时，插件会自动从国内镜像（npmmirror）下载并解压到 `%USERPROFILE%\.dsh\electron`，设置页会显示下载与解压进度。
 
-- 默认查找 `%USERPROFILE%\.dsh\electron\electron.exe`；
-- 也可以设置：
+想用已有的 Electron，或换镜像/版本时：
 
 ```powershell
-$env:DSH_PET_ELECTRON_PATH = "C:\path\to\electron.exe"
+$env:DSH_PET_ELECTRON_PATH = "C:\path\to\electron.exe"   # 直接指定可执行文件
+$env:DSH_PET_ELECTRON_URL = "https://npmmirror.com/mirrors/electron/43.3.0/electron-v43.3.0-win32-x64.zip"
+$env:DSH_PET_ELECTRON_VERSION = "43.3.0"
+$env:DSH_PET_ELECTRON_HOME = "D:\electron"                # 换个安装目录
 ```
 
-找不到 Electron 时，设置页「桌面模式」会显示失败原因，网页功能不受影响。
+下载失败时设置页会显示具体原因，网页功能不受影响。
 
 ## 4. ffmpeg 首次使用
 

@@ -4743,8 +4743,15 @@ window.__ModuleLoader__.load({
                   opacity: 1,
                 },
               },
-              `桌面状态：${desktop.status}${desktop.windows?.length ? `（${desktop.windows.length} 窗）` : ''}`,
+              `桌面状态：${desktop.status === 'provisioning' ? '准备运行环境' : desktop.status}${desktop.windows?.length ? `（${desktop.windows.length} 窗）` : ''}`,
             ),
+            desktop.provisioning
+              ? h(
+                  'span',
+                  { style: { ...styles.status, opacity: 1 } },
+                  `${desktop.provisioning.message}（${desktop.provisioning.percent}%）`,
+                )
+              : null,
             desktop.error
               ? h('span', { style: { ...styles.status, color: '#c0392b', opacity: 1 } }, desktop.error)
               : null,

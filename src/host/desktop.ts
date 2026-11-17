@@ -1,12 +1,12 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { appendFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
-import { resolveDshHome } from './config.js';
+import { ensureElectron, findElectron } from './electron-runtime.js';
 
-export type DesktopStatus = 'stopped' | 'starting' | 'running' | 'failed';
+export type DesktopStatus = 'stopped' | 'starting' | 'running' | 'provisioning' | 'failed';
 
 export interface DesktopAnimation {
   name: string;
@@ -65,6 +65,8 @@ export interface DesktopSnapshot {
   error?: string;
   windows: DesktopWindow[];
   failed?: Array<{ petId: string; error: string }>;
+  /** 首次启动桌面模式时自动下载 Electron 的进度。 */
+  provisioning?: { percent: number; message: string };
 }
 
 const MAX_RESTARTS = 3;
@@ -85,6 +87,8 @@ export class DesktopManager {
   private failedPets = new Map<string, string>();
   private intentional = new Set<string>();
   private errorValue: string | undefined;
+  private provisioningState: { percent: number; message: string } | undefined;
+  private provisioningStarted = false;
   private requestHandler:
     | ((message: Record<string, unknown>) => Promise<Record<string, unknown>>)
     | undefined;
@@ -124,40 +128,25 @@ export class DesktopManager {
     }));
     const failed = [...this.failedPets.entries()].map(([petId, error]) => ({ petId, error }));
     const status: DesktopStatus =
-      windows.length > 0 ? 'running' : failed.length > 0 ? 'failed' : 'stopped';
+      windows.length > 0
+        ? 'running'
+        : this.provisioningState
+          ? 'provisioning'
+          : failed.length > 0
+            ? 'failed'
+            : 'stopped';
     return {
       status,
       pid: windows[0]?.pid,
       error: this.errorValue ?? failed[0]?.error,
       windows,
       failed,
+      ...(this.provisioningState ? { provisioning: { ...this.provisioningState } } : {}),
     };
   }
 
   private electronPath(): string | undefined {
-    const candidates = [
-      process.env.DSH_PET_ELECTRON_PATH,
-      process.platform === 'win32'
-        ? join(resolveDshHome(), 'electron', 'electron.exe')
-        : undefined,
-      process.platform === 'win32'
-        ? join(homedir(), '.dsh', 'electron', 'electron.exe')
-        : undefined,
-      process.platform === 'darwin'
-        ? join(resolveDshHome(), 'electron', 'Electron.app', 'Contents', 'MacOS', 'Electron')
-        : undefined,
-      process.platform === 'darwin'
-        ? join(homedir(), '.dsh', 'electron', 'Electron.app', 'Contents', 'MacOS', 'Electron')
-        : undefined,
-      process.platform === 'linux'
-        ? join(resolveDshHome(), 'electron', 'electron')
-        : undefined,
-      process.platform === 'linux'
-        ? join(homedir(), '.dsh', 'electron', 'electron')
-        : undefined,
-    ].filter((value): value is string => Boolean(value));
-
-    return candidates.find((candidate) => existsSync(candidate));
+    return findElectron();
   }
 
   private helperPath(): string {
@@ -179,7 +168,7 @@ export class DesktopManager {
 
     const electron = this.electronPath();
     if (!electron) {
-      this.failedPets.set(options.petId, 'Electron not found（可设置 DSH_PET_ELECTRON_PATH）');
+      this.startProvisioning(options);
       return;
     }
     if (!existsSync(options.videoPath)) {
@@ -355,6 +344,44 @@ export class DesktopManager {
       this.children.delete(options.petId);
       this.failedPets.set(options.petId, error.message);
     });
+  }
+
+  /**
+   * 首次启动桌面模式时，本机没有 Electron：自动下载并解压，
+   * 期间 status() 报告 provisioning 进度，完成后补齐所有待启动的宠物。
+   */
+  private startProvisioning(options: DesktopStartOptions): void {
+    if (this.provisioningStarted) {
+      this.provisioningState ??= { percent: 0, message: '正在准备桌面运行环境…' };
+      return;
+    }
+
+    this.provisioningStarted = true;
+    this.failedPets.delete(options.petId);
+    let lastMessage = '正在准备桌面运行环境…';
+    this.provisioningState = { percent: 0, message: lastMessage };
+
+    void ensureElectron((progress) => {
+      lastMessage = progress.message;
+      this.provisioningState = { percent: progress.percent, message: progress.message };
+    })
+      .then((executable) => {
+        this.provisioningStarted = false;
+        this.provisioningState = undefined;
+        if (!executable) {
+          this.failedPets.set(options.petId, lastMessage);
+          return;
+        }
+        hostLog(`electron ready: ${executable}`);
+        for (const [petId, next] of this.desired) {
+          if (!this.children.has(petId)) this.spawn(next);
+        }
+      })
+      .catch((error: unknown) => {
+        this.provisioningStarted = false;
+        this.provisioningState = undefined;
+        this.failedPets.set(options.petId, error instanceof Error ? error.message : String(error));
+      });
   }
 
   isRunning(petId: string): boolean {
