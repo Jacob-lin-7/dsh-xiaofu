@@ -4,13 +4,11 @@ name: Publish to npm
 # 前置：仓库 Settings → Secrets and variables → Actions 里添加 NPM_TOKEN
 #       （npm 网站上生成的 Granular Access Token，勾 Read and write + Bypass 2FA）
 #
-# 触发方式：
-#   1. 打 tag：git tag v0.3.6 && git push origin v0.3.6
-#   2. 或手动：Actions → Publish to npm → Run workflow
+# 触发方式：Actions → Publish to npm → Run workflow（手动）
+# 暂不挂 tag 触发：未配 NPM_TOKEN 时每次都红，只会刷失败邮件。
+# 配好 Trusted Publishing 或 NPM_TOKEN 后，再把 push.tags 加回来。
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       dry_run:
@@ -30,7 +28,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
 
@@ -54,9 +52,11 @@ jobs:
         id: pack
         shell: bash
         run: |
-          npm pack --json > pack.json
-          node -e "const j=require('./pack.json'); console.log('tar:', j[0].filename, j[0].size)"
-          echo "tgz=$(node -p "require('./pack.json')[0].filename")" >> "$GITHUB_OUTPUT"
+          npm pack
+          tgz="$(node -p "require('./package.json').name + '-' + require('./package.json').version + '.tgz'")"
+          test -f "$tgz" || { echo "::error::npm pack 没有产出 $tgz"; ls -la; exit 1; }
+          echo "tgz=$tgz" >> "$GITHUB_OUTPUT"
+          echo "包：$tgz"
 
       - name: Verify tarball contains built entry
         shell: bash
